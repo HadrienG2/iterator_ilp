@@ -1,0 +1,33 @@
+[package]
+name = "iterator_ilp"
+version = "1.0.0"
+authors = "Hadrien G. <knights_of_ni@gmx.com>"
+edition = "2021"
+rust-version = "1.67.0"
+description = "Iterator extensions for instruction-parallel reductions"
+repository = "https://github.com/HadrienG2/iterator_ilp"
+license = "MPL-2.0"
+keywords = ["iterator", "ilp", "instruction-level parallelism", "unroll"]
+categories = ["algorithms", "concurrency", "mathematics", "no-std::no-alloc", "rust-patterns"]
+
+[features]
+default = ["std"]
+std = []
+
+[dependencies]
+num-traits = "0.2"
+
+[dev-dependencies]
+criterion = { version = "0.3", default-features = false }
+hwlocality = { git = "https://github.com/HadrienG2/hwlocality.git", rev = "2d24c4b7cbd38c7330878adf16e5ee335e75a8d6" }
+multiversion = "0.7"
+quickcheck = "1.0"
+quickcheck_macros = "1.0"
+rand = "0.8"
+
+[[bench]]
+name = "benchmark"
+harness = false
+
+[profile.bench]
+codegen-units = 1
