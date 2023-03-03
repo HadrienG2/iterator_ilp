@@ -339,6 +339,11 @@ pub trait IteratorILP: Iterator + ExactSizeIterator + Sized + TrustedLen {
     ///
     /// See also the [general IteratorILP documentation](IteratorILP) and [its
     /// section on search routines](#Searching) in particular.
+    ///
+    /// # Panics
+    ///
+    /// - If `STREAMS` is set to 0. Need at least one instruction stream to
+    ///   make progress.
     #[inline]
     fn all_ilp<const STREAMS: usize>(self, mut predicate: impl FnMut(Self::Item) -> bool) -> bool {
         assert_ne!(STREAMS, 0, "Need at least one stream to make progress");
@@ -350,6 +355,11 @@ pub trait IteratorILP: Iterator + ExactSizeIterator + Sized + TrustedLen {
     ///
     /// See also the [general IteratorILP documentation](IteratorILP) and [its
     /// section on search routines](#Searching) in particular.
+    ///
+    /// # Panics
+    ///
+    /// - If `STREAMS` is set to 0. Need at least one instruction stream to
+    ///   make progress.
     #[inline]
     fn find_ilp<const STREAMS: usize>(
         self,
@@ -382,6 +392,11 @@ pub trait IteratorILP: Iterator + ExactSizeIterator + Sized + TrustedLen {
     ///
     /// See also the [general IteratorILP documentation](IteratorILP) and [its
     /// section on search routines](#Searching) in particular.
+    ///
+    /// # Panics
+    ///
+    /// - If `STREAMS` is set to 0. Need at least one instruction stream to
+    ///   make progress.
     #[inline]
     fn find_map_ilp<const STREAMS: usize, Res>(
         self,
@@ -397,6 +412,11 @@ pub trait IteratorILP: Iterator + ExactSizeIterator + Sized + TrustedLen {
     ///
     /// See also the [general IteratorILP documentation](IteratorILP) and [its
     /// section on search routines](#Searching) in particular.
+    ///
+    /// # Panics
+    ///
+    /// - If `STREAMS` is set to 0. Need at least one instruction stream to
+    ///   make progress.
     #[inline]
     fn position_ilp<const STREAMS: usize>(
         self,
@@ -411,6 +431,11 @@ pub trait IteratorILP: Iterator + ExactSizeIterator + Sized + TrustedLen {
     ///
     /// See also the [general IteratorILP documentation](IteratorILP) and [its
     /// section on search routines](#Searching) in particular.
+    ///
+    /// # Panics
+    ///
+    /// - If `STREAMS` is set to 0. Need at least one instruction stream to
+    ///   make progress.
     #[inline]
     fn rposition_ilp<const STREAMS: usize>(
         self,
@@ -439,6 +464,11 @@ pub trait IteratorILP: Iterator + ExactSizeIterator + Sized + TrustedLen {
     ///
     /// See also the [general IteratorILP documentation](IteratorILP) and [its
     /// section on accumulation](#Accumulating) in particular.
+    ///
+    /// # Panics
+    ///
+    /// - If `STREAMS` is set to 0. Need at least one instruction stream to
+    ///   make progress.
     #[inline]
     fn fold_ilp<const STREAMS: usize, Acc>(
         mut self,
@@ -490,6 +520,11 @@ pub trait IteratorILP: Iterator + ExactSizeIterator + Sized + TrustedLen {
     ///
     /// See also the [general IteratorILP documentation](IteratorILP) and [its
     /// section on accumulation](#Accumulating) in particular.
+    ///
+    /// # Panics
+    ///
+    /// - If `STREAMS` is set to 0. Need at least one instruction stream to
+    ///   make progress.
     #[inline]
     fn reduce_ilp<const STREAMS: usize>(
         self,
@@ -521,6 +556,11 @@ pub trait IteratorILP: Iterator + ExactSizeIterator + Sized + TrustedLen {
     ///
     /// See also the [general IteratorILP documentation](IteratorILP) and [its
     /// section on sum and product](#sum-and-product) in particular.
+    ///
+    /// # Panics
+    ///
+    /// - If `STREAMS` is set to 0. Need at least one instruction stream to
+    ///   make progress.
     #[inline]
     fn sum_ilp<const STREAMS: usize, S: Add<Self::Item, Output = S> + Zero>(self) -> S
     where
@@ -535,6 +575,11 @@ pub trait IteratorILP: Iterator + ExactSizeIterator + Sized + TrustedLen {
     ///
     /// See also the [general IteratorILP documentation](IteratorILP) and [its
     /// section on sum and product](#sum-and-product) in particular.
+    ///
+    /// # Panics
+    ///
+    /// - If `STREAMS` is set to 0. Need at least one instruction stream to
+    ///   make progress.
     #[inline]
     fn product_ilp<const STREAMS: usize, P: Mul<Self::Item, Output = P> + One>(self) -> P
     where
