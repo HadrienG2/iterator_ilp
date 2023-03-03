@@ -7,7 +7,7 @@ rust-version = "1.67.0"
 description = "Iterator extensions for instruction-parallel reductions"
 repository = "https://github.com/HadrienG2/iterator_ilp"
 license = "MPL-2.0"
-keywords = ["iterator", "ilp", "instruction-level parallelism", "unroll"]
+keywords = ["iterator", "ilp", "instruction-parallel", "simd", "unroll"]
 categories = ["algorithms", "concurrency", "mathematics", "no-std::no-alloc", "rust-patterns"]
 
 [features]
