@@ -175,8 +175,8 @@ use num_traits::{One, Zero};
 /// panicking instead.
 ///
 /// ILP reductions are implemented by treating an [`Iterator`] as the
-/// interleaved output of `STREAMS` different interleaved iterators, that we
-/// will call streams in the following to avoid confusion:
+/// interleaved output of `STREAMS` different iterators, that we will call
+/// streams in the following to avoid confusion:
 ///
 /// - The first item is treated as if it were the first item of the first stream
 /// - The second item is treated as if it were the first item of the second stream
