@@ -1,6 +1,6 @@
 [package]
 name = "iterator_ilp"
-version = "1.0.3"
+version = "1.0.4"
 authors = ["Hadrien G. <knights_of_ni@gmx.com>"]
 edition = "2021"
 rust-version = "1.67.0"
