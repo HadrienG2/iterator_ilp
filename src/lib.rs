@@ -505,10 +505,7 @@ pub trait IteratorILP: Iterator + Sized + TrustedLowerBound {
     /// - If `STREAMS` is set to 0. Need at least one instruction stream to
     ///   make progress.
     #[inline]
-    fn sum_ilp<const STREAMS: usize, S: Add<Self::Item, Output = S> + Zero>(self) -> S
-    where
-        Self::Item: Add<Output = S>,
-    {
+    fn sum_ilp<const STREAMS: usize, S: Add<Self::Item, Output = S> + Add<S> + Zero>(self) -> S {
         assert_ne!(STREAMS, 0, "Need at least one stream to make progress");
         self.fold_ilp::<STREAMS, _>(|| S::zero(), |acc, it| acc + it, |acc1, acc2| acc1 + acc2)
     }
@@ -524,10 +521,7 @@ pub trait IteratorILP: Iterator + Sized + TrustedLowerBound {
     /// - If `STREAMS` is set to 0. Need at least one instruction stream to
     ///   make progress.
     #[inline]
-    fn product_ilp<const STREAMS: usize, P: Mul<Self::Item, Output = P> + One>(self) -> P
-    where
-        Self::Item: Mul<Output = P>,
-    {
+    fn product_ilp<const STREAMS: usize, P: Mul<Self::Item, Output = P> + Mul<P> + One>(self) -> P {
         assert_ne!(STREAMS, 0, "Need at least one stream to make progress");
         self.fold_ilp::<STREAMS, _>(|| P::one(), |acc, it| acc * it, |acc1, acc2| acc1 * acc2)
     }
