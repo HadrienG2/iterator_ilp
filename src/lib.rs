@@ -145,11 +145,9 @@ use core::iter::{FusedIterator, Product, Sum};
 use core::{
     cell::RefCell,
     hint::unreachable_unchecked,
-    iter::{
-        Chain, Cloned, Copied, Empty, Enumerate, ExactSizeIterator, Iterator, Map, Once, Rev, Zip,
-    },
+    iter::{ExactSizeIterator, Iterator},
     mem::MaybeUninit,
-    ops::{Add, Mul, Range, RangeInclusive},
+    ops::{Add, Mul},
 };
 use num_traits::{One, Zero};
 
@@ -195,11 +193,14 @@ use num_traits::{One, Zero};
 ///
 /// In principle, a [`FusedIterator`] bound should be enough to satisfy this
 /// requirement. But in practice, good code generation could not be obtained
-/// without requiring [`TrustedLen`]. Which, unfortunately, is unstable.
-/// Therefore, we currently approximate it by providing our own version of the
-/// TrustedLen trait which is implemented for all standard library iterators
-/// that implement TrustedLen. Once [`TrustedLen`] is stabilized, this crate
-/// will switch to it in a breaking release.
+/// without relying on the lower bound of [`Iterator::size_hint()`] to be
+/// correct for safety. This is a subset of the contract of [`TrustedLen`],
+/// which, unfortunately, is unstable.
+///
+/// Therefore, we currently approximate it by providing our own version of
+/// [`TrustedLen`] trait which is implemented for all standard library iterators
+/// that implement [`TrustedLen`]. Once [`TrustedLen`] is stabilized, this crate
+/// will blanket-impl [`TrustedLowerBound`] for it in a breaking release.
 ///
 /// That's it for the general strategy, now to get into the detail of particular
 /// algorithms, we must divide [`Iterator`] reductions into three categories:
@@ -259,7 +260,7 @@ use num_traits::{One, Zero};
 /// [`sum()`]: Iterator::sum()
 /// [`sum_ilp()`]: IteratorILP::sum_ilp()
 /// [`TrustedLen`]: core::iter::TrustedLen
-pub trait IteratorILP: Iterator + Sized + TrustedLen {
+pub trait IteratorILP: Iterator + Sized + TrustedLowerBound {
     // === Searching ===
 
     /// Like [`Iterator::any()`], but with multiple ILP streams and consumes the
@@ -532,7 +533,7 @@ pub trait IteratorILP: Iterator + Sized + TrustedLen {
     }
 }
 
-impl<I: Iterator + Sized + TrustedLen> IteratorILP for I {}
+impl<I: Iterator + Sized + TrustedLowerBound> IteratorILP for I {}
 
 /// Unchecked variant of `Iterator::next()`
 ///
@@ -569,80 +570,348 @@ fn array_from_fn<const SIZE: usize, T>(mut idx_to_elem: impl FnMut(usize) -> T) 
     }
 }
 
-/// Polyfill for the unstable [`TrustedLen`](core::iter::TrustedLen) trait
+/// An iterator that reports an accurate lower bound using [`size_hint()`]
 ///
-/// Lets you assume that the bounds reported by `iterator::size_hint()` are
-/// correct for safety.
+/// The lower bound reported by this iterator is guaranteed to be accurate, in
+/// the sense that the iterator cannot output less items. Unsafe code can rely
+/// on this being correct for safety.
 ///
-/// Do not rely too much on this trait in your codebase, it will be scraped in
-/// favor of the stable version of `TrustedLen` as soon as it lands.
-pub unsafe trait TrustedLen: Iterator {}
+/// For optimal performance, the lower bound should also be exact (i.e. equal to
+/// the number of elements being returned) whenever possible, but this is not a
+/// safety-critical property.
+///
+/// Since this iterator trait is a subset of the unstable [`TrustedLen`]
+/// trait, it will be implemented for all implementations of [`TrustedLen`] as
+/// they stabilize.
+///
+/// [`size_hint()`]: Iterator::size_hint()
+/// [`TrustedLen`]: core::iter::TrustedLen
+pub unsafe trait TrustedLowerBound: Iterator {}
 //
-#[cfg(feature = "std")]
-unsafe impl<T> TrustedLen for std::vec::IntoIter<T> {}
-unsafe impl<T> TrustedLen for Empty<T> {}
-unsafe impl<T> TrustedLen for Once<T> {}
-unsafe impl<'a, I> TrustedLen for &'a mut I where I: TrustedLen + ?Sized {}
-unsafe impl<I> TrustedLen for Rev<I> where I: TrustedLen + DoubleEndedIterator {}
-unsafe impl<'a, I, T> TrustedLen for Cloned<I>
-where
-    I: TrustedLen<Item = &'a T>,
-    T: 'a + Clone,
-{
+// All standard Iterator implementations are presumed to be implemented correctly
+mod core_iters {
+    use crate::TrustedLowerBound;
+    use core::{
+        iter::{
+            Chain, Cloned, Copied, Cycle, Empty, Enumerate, Filter, FilterMap, FlatMap, Flatten,
+            FromFn, Fuse, Inspect, Iterator, Map, MapWhile, Once, OnceWith, Peekable, Repeat,
+            RepeatWith, Rev, Scan, Skip, SkipWhile, StepBy, Successors, Take, TakeWhile, Zip,
+        },
+        ops::{Range, RangeFrom, RangeInclusive},
+        str::{CharIndices, Chars, EncodeUtf16, SplitAsciiWhitespace, SplitWhitespace},
+    };
+
+    unsafe impl<'a, I> TrustedLowerBound for &'a mut I where I: TrustedLowerBound + ?Sized {}
+    unsafe impl<A, B> TrustedLowerBound for Chain<A, B>
+    where
+        A: TrustedLowerBound,
+        B: TrustedLowerBound<Item = <A as Iterator>::Item>,
+    {
+    }
+    unsafe impl TrustedLowerBound for CharIndices<'_> {}
+    unsafe impl TrustedLowerBound for Chars<'_> {}
+    unsafe impl<'a, I, T> TrustedLowerBound for Cloned<I>
+    where
+        I: TrustedLowerBound<Item = &'a T>,
+        T: 'a + Clone,
+    {
+    }
+    unsafe impl<'a, I, T> TrustedLowerBound for Copied<I>
+    where
+        I: TrustedLowerBound<Item = &'a T>,
+        T: 'a + Copy,
+    {
+    }
+    unsafe impl<I> TrustedLowerBound for Cycle<I> where I: TrustedLowerBound + Clone {}
+    unsafe impl<T> TrustedLowerBound for Empty<T> {}
+    unsafe impl TrustedLowerBound for EncodeUtf16<'_> {}
+    unsafe impl<I> TrustedLowerBound for Enumerate<I> where I: TrustedLowerBound {}
+    unsafe impl<I, P> TrustedLowerBound for Filter<I, P>
+    where
+        I: TrustedLowerBound,
+        P: FnMut(&<I as Iterator>::Item) -> bool,
+    {
+    }
+    unsafe impl<B, I, F> TrustedLowerBound for FilterMap<I, F>
+    where
+        F: FnMut(<I as Iterator>::Item) -> Option<B>,
+        I: TrustedLowerBound,
+    {
+    }
+    unsafe impl<I, U> TrustedLowerBound for Flatten<I>
+    where
+        I: TrustedLowerBound,
+        <I as Iterator>::Item: IntoIterator<IntoIter = U, Item = <U as Iterator>::Item>,
+        U: TrustedLowerBound,
+    {
+    }
+    unsafe impl<I, U, F> TrustedLowerBound for FlatMap<I, U, F>
+    where
+        I: TrustedLowerBound,
+        U: IntoIterator,
+        <U as IntoIterator>::IntoIter: TrustedLowerBound,
+        F: FnMut(<I as Iterator>::Item) -> U,
+    {
+    }
+    unsafe impl<T, F> TrustedLowerBound for FromFn<F> where F: FnMut() -> Option<T> {}
+    unsafe impl<I> TrustedLowerBound for Fuse<I> where I: TrustedLowerBound {}
+    unsafe impl<I, F> TrustedLowerBound for Inspect<I, F>
+    where
+        I: TrustedLowerBound,
+        F: FnMut(&<I as Iterator>::Item),
+    {
+    }
+    unsafe impl<B, I, F> TrustedLowerBound for Map<I, F>
+    where
+        F: FnMut(<I as Iterator>::Item) -> B,
+        I: TrustedLowerBound,
+    {
+    }
+    unsafe impl<B, I, F> TrustedLowerBound for MapWhile<I, F>
+    where
+        F: FnMut(<I as Iterator>::Item) -> Option<B>,
+        I: TrustedLowerBound,
+    {
+    }
+    unsafe impl<T> TrustedLowerBound for Once<T> {}
+    unsafe impl<A, F> TrustedLowerBound for OnceWith<F> where F: FnOnce() -> A {}
+    unsafe impl<I> TrustedLowerBound for Peekable<I> where I: TrustedLowerBound {}
+    unsafe impl TrustedLowerBound for Range<usize> {}
+    unsafe impl TrustedLowerBound for Range<isize> {}
+    unsafe impl TrustedLowerBound for Range<u8> {}
+    unsafe impl TrustedLowerBound for Range<i8> {}
+    unsafe impl TrustedLowerBound for Range<u16> {}
+    unsafe impl TrustedLowerBound for Range<i16> {}
+    unsafe impl TrustedLowerBound for Range<u32> {}
+    unsafe impl TrustedLowerBound for Range<i32> {}
+    unsafe impl TrustedLowerBound for Range<i64> {}
+    unsafe impl TrustedLowerBound for Range<u64> {}
+    unsafe impl TrustedLowerBound for RangeFrom<usize> {}
+    unsafe impl TrustedLowerBound for RangeFrom<isize> {}
+    unsafe impl TrustedLowerBound for RangeFrom<u8> {}
+    unsafe impl TrustedLowerBound for RangeFrom<i8> {}
+    unsafe impl TrustedLowerBound for RangeFrom<u16> {}
+    unsafe impl TrustedLowerBound for RangeFrom<i16> {}
+    unsafe impl TrustedLowerBound for RangeFrom<u32> {}
+    unsafe impl TrustedLowerBound for RangeFrom<i32> {}
+    unsafe impl TrustedLowerBound for RangeFrom<i64> {}
+    unsafe impl TrustedLowerBound for RangeFrom<u64> {}
+    unsafe impl TrustedLowerBound for RangeInclusive<usize> {}
+    unsafe impl TrustedLowerBound for RangeInclusive<isize> {}
+    unsafe impl TrustedLowerBound for RangeInclusive<u8> {}
+    unsafe impl TrustedLowerBound for RangeInclusive<i8> {}
+    unsafe impl TrustedLowerBound for RangeInclusive<u16> {}
+    unsafe impl TrustedLowerBound for RangeInclusive<i16> {}
+    unsafe impl TrustedLowerBound for RangeInclusive<u32> {}
+    unsafe impl TrustedLowerBound for RangeInclusive<i32> {}
+    unsafe impl TrustedLowerBound for RangeInclusive<i64> {}
+    unsafe impl TrustedLowerBound for RangeInclusive<u64> {}
+    unsafe impl<A: Clone> TrustedLowerBound for Repeat<A> {}
+    unsafe impl<A, F> TrustedLowerBound for RepeatWith<F> where F: FnMut() -> A {}
+    unsafe impl<I> TrustedLowerBound for Rev<I> where I: TrustedLowerBound + DoubleEndedIterator {}
+    unsafe impl<B, I, St, F> TrustedLowerBound for Scan<I, St, F>
+    where
+        F: FnMut(&mut St, <I as Iterator>::Item) -> Option<B>,
+        I: TrustedLowerBound,
+    {
+    }
+    unsafe impl<I> TrustedLowerBound for Skip<I> where I: TrustedLowerBound {}
+    unsafe impl<I, P> TrustedLowerBound for SkipWhile<I, P>
+    where
+        I: TrustedLowerBound,
+        P: FnMut(&<I as Iterator>::Item) -> bool,
+    {
+    }
+    unsafe impl TrustedLowerBound for SplitAsciiWhitespace<'_> {}
+    unsafe impl TrustedLowerBound for SplitWhitespace<'_> {}
+    unsafe impl<I> TrustedLowerBound for StepBy<I> where I: TrustedLowerBound {}
+    unsafe impl<T, F> TrustedLowerBound for Successors<T, F> where F: FnMut(&T) -> Option<T> {}
+    unsafe impl<I> TrustedLowerBound for Take<I> where I: TrustedLowerBound {}
+    unsafe impl<I, P> TrustedLowerBound for TakeWhile<I, P>
+    where
+        I: TrustedLowerBound,
+        P: FnMut(&<I as Iterator>::Item) -> bool,
+    {
+    }
+    unsafe impl<A, B> TrustedLowerBound for Zip<A, B>
+    where
+        A: TrustedLowerBound,
+        B: TrustedLowerBound,
+    {
+    }
+    unsafe impl<T, const N: usize> TrustedLowerBound for core::array::IntoIter<T, N> {}
+    unsafe impl TrustedLowerBound for core::ascii::EscapeDefault {}
+    unsafe impl<I> TrustedLowerBound for core::char::DecodeUtf16<I> where
+        I: TrustedLowerBound<Item = u16>
+    {
+    }
+    unsafe impl TrustedLowerBound for core::char::EscapeDebug {}
+    unsafe impl TrustedLowerBound for core::char::EscapeDefault {}
+    unsafe impl TrustedLowerBound for core::char::EscapeUnicode {}
+    unsafe impl TrustedLowerBound for core::char::ToLowercase {}
+    unsafe impl TrustedLowerBound for core::char::ToUppercase {}
+    unsafe impl<'a, A> TrustedLowerBound for core::option::Iter<'a, A> {}
+    unsafe impl<'a, A> TrustedLowerBound for core::option::IterMut<'a, A> {}
+    unsafe impl<A> TrustedLowerBound for core::option::IntoIter<A> {}
+    unsafe impl<'a, A> TrustedLowerBound for core::result::Iter<'a, A> {}
+    unsafe impl<'a, A> TrustedLowerBound for core::result::IterMut<'a, A> {}
+    unsafe impl<A> TrustedLowerBound for core::result::IntoIter<A> {}
+    unsafe impl<T> TrustedLowerBound for core::slice::Chunks<'_, T> {}
+    unsafe impl<T> TrustedLowerBound for core::slice::ChunksExact<'_, T> {}
+    unsafe impl<T> TrustedLowerBound for core::slice::ChunksExactMut<'_, T> {}
+    unsafe impl<T> TrustedLowerBound for core::slice::ChunksMut<'_, T> {}
+    unsafe impl TrustedLowerBound for core::slice::EscapeAscii<'_> {}
+    unsafe impl<'a, T> TrustedLowerBound for core::slice::Iter<'a, T> {}
+    unsafe impl<'a, T> TrustedLowerBound for core::slice::IterMut<'a, T> {}
+    unsafe impl<T> TrustedLowerBound for core::slice::RChunks<'_, T> {}
+    unsafe impl<T> TrustedLowerBound for core::slice::RChunksExact<'_, T> {}
+    unsafe impl<T> TrustedLowerBound for core::slice::RChunksExactMut<'_, T> {}
+    unsafe impl<T> TrustedLowerBound for core::slice::RChunksMut<'_, T> {}
+    unsafe impl<'a, T, P> TrustedLowerBound for core::slice::RSplit<'a, T, P> where P: FnMut(&T) -> bool {}
+    unsafe impl<'a, T, P> TrustedLowerBound for core::slice::RSplitMut<'a, T, P> where
+        P: FnMut(&T) -> bool
+    {
+    }
+    unsafe impl<'a, T, P> TrustedLowerBound for core::slice::RSplitN<'a, T, P> where P: FnMut(&T) -> bool
+    {}
+    unsafe impl<'a, T, P> TrustedLowerBound for core::slice::RSplitNMut<'a, T, P> where
+        P: FnMut(&T) -> bool
+    {
+    }
+    unsafe impl<'a, T, P> TrustedLowerBound for core::slice::Split<'a, T, P> where P: FnMut(&T) -> bool {}
+    unsafe impl<'a, T, P> TrustedLowerBound for core::slice::SplitInclusive<'a, T, P> where
+        P: FnMut(&T) -> bool
+    {
+    }
+    unsafe impl<'a, T, P> TrustedLowerBound for core::slice::SplitInclusiveMut<'a, T, P> where
+        P: FnMut(&T) -> bool
+    {
+    }
+    unsafe impl<'a, T, P> TrustedLowerBound for core::slice::SplitMut<'a, T, P> where
+        P: FnMut(&T) -> bool
+    {
+    }
+    unsafe impl<'a, T, P> TrustedLowerBound for core::slice::SplitN<'a, T, P> where P: FnMut(&T) -> bool {}
+    unsafe impl<'a, T, P> TrustedLowerBound for core::slice::SplitNMut<'a, T, P> where
+        P: FnMut(&T) -> bool
+    {
+    }
+    unsafe impl<T> TrustedLowerBound for core::slice::Windows<'_, T> {}
+    unsafe impl TrustedLowerBound for core::str::Bytes<'_> {}
+    unsafe impl TrustedLowerBound for core::str::EscapeDebug<'_> {}
+    unsafe impl TrustedLowerBound for core::str::EscapeDefault<'_> {}
+    unsafe impl TrustedLowerBound for core::str::EscapeUnicode<'_> {}
+    unsafe impl TrustedLowerBound for core::str::Lines<'_> {}
+
+    #[cfg(feature = "std")]
+    mod std {
+        use crate::TrustedLowerBound;
+        use core::hash::{BuildHasher, Hash};
+        use std::{
+            env::{Args, ArgsOs, SplitPaths, Vars, VarsOs},
+            fs::ReadDir,
+            io::{BufRead, Read},
+            path::{Ancestors, Components},
+            process::{CommandArgs, CommandEnvs},
+            sync::mpsc::TryIter,
+            vec::Splice,
+        };
+
+        unsafe impl TrustedLowerBound for Ancestors<'_> {}
+        unsafe impl TrustedLowerBound for Args {}
+        unsafe impl TrustedLowerBound for ArgsOs {}
+        unsafe impl<I> TrustedLowerBound for Box<I> where I: TrustedLowerBound {}
+        unsafe impl TrustedLowerBound for CommandArgs<'_> {}
+        unsafe impl TrustedLowerBound for CommandEnvs<'_> {}
+        unsafe impl TrustedLowerBound for Components<'_> {}
+        unsafe impl TrustedLowerBound for ReadDir {}
+        unsafe impl<I> TrustedLowerBound for Splice<'_, I> where I: TrustedLowerBound {}
+        unsafe impl TrustedLowerBound for SplitPaths<'_> {}
+        unsafe impl<T> TrustedLowerBound for TryIter<'_, T> {}
+        unsafe impl TrustedLowerBound for Vars {}
+        unsafe impl TrustedLowerBound for VarsOs {}
+        unsafe impl<T> TrustedLowerBound for std::collections::binary_heap::Drain<'_, T> {}
+        unsafe impl<T> TrustedLowerBound for std::collections::binary_heap::Iter<'_, T> {}
+        unsafe impl<T> TrustedLowerBound for std::collections::binary_heap::IntoIter<T> {}
+        unsafe impl<K, V> TrustedLowerBound for std::collections::btree_map::IntoIter<K, V> {}
+        unsafe impl<K, V> TrustedLowerBound for std::collections::btree_map::IntoKeys<K, V> {}
+        unsafe impl<K, V> TrustedLowerBound for std::collections::btree_map::IntoValues<K, V> {}
+        unsafe impl<K, V> TrustedLowerBound for std::collections::btree_map::Iter<'_, K, V> {}
+        unsafe impl<K, V> TrustedLowerBound for std::collections::btree_map::IterMut<'_, K, V> {}
+        unsafe impl<K, V> TrustedLowerBound for std::collections::btree_map::Keys<'_, K, V> {}
+        unsafe impl<K, V> TrustedLowerBound for std::collections::btree_map::Range<'_, K, V> {}
+        unsafe impl<K, V> TrustedLowerBound for std::collections::btree_map::RangeMut<'_, K, V> {}
+        unsafe impl<K, V> TrustedLowerBound for std::collections::btree_map::Values<'_, K, V> {}
+        unsafe impl<K, V> TrustedLowerBound for std::collections::btree_map::ValuesMut<'_, K, V> {}
+        unsafe impl<T> TrustedLowerBound for std::collections::btree_set::IntoIter<T> {}
+        unsafe impl<T> TrustedLowerBound for std::collections::btree_set::Iter<'_, T> {}
+        unsafe impl<T> TrustedLowerBound for std::collections::btree_set::Range<'_, T> {}
+        unsafe impl<T: Ord> TrustedLowerBound for std::collections::btree_set::SymmetricDifference<'_, T> {}
+        unsafe impl<T: Ord> TrustedLowerBound for std::collections::btree_set::Union<'_, T> {}
+        unsafe impl<K, V> TrustedLowerBound for std::collections::hash_map::Drain<'_, K, V> {}
+        unsafe impl<K, V> TrustedLowerBound for std::collections::hash_map::IntoIter<K, V> {}
+        unsafe impl<K, V> TrustedLowerBound for std::collections::hash_map::IntoKeys<K, V> {}
+        unsafe impl<K, V> TrustedLowerBound for std::collections::hash_map::IntoValues<K, V> {}
+        unsafe impl<K, V> TrustedLowerBound for std::collections::hash_map::Iter<'_, K, V> {}
+        unsafe impl<K, V> TrustedLowerBound for std::collections::hash_map::IterMut<'_, K, V> {}
+        unsafe impl<K, V> TrustedLowerBound for std::collections::hash_map::Keys<'_, K, V> {}
+        unsafe impl<K, V> TrustedLowerBound for std::collections::hash_map::Values<'_, K, V> {}
+        unsafe impl<K, V> TrustedLowerBound for std::collections::hash_map::ValuesMut<'_, K, V> {}
+        unsafe impl<'a, T, S> TrustedLowerBound for std::collections::hash_set::Difference<'a, T, S>
+        where
+            T: Eq + Hash,
+            S: BuildHasher,
+        {
+        }
+        unsafe impl<'a, T, S> TrustedLowerBound for std::collections::hash_set::Intersection<'a, T, S>
+        where
+            T: Eq + Hash,
+            S: BuildHasher,
+        {
+        }
+        unsafe impl<'a, T, S> TrustedLowerBound
+            for std::collections::hash_set::SymmetricDifference<'a, T, S>
+        where
+            T: Eq + Hash,
+            S: BuildHasher,
+        {
+        }
+        unsafe impl<'a, T, S> TrustedLowerBound for std::collections::hash_set::Union<'a, T, S>
+        where
+            T: Eq + Hash,
+            S: BuildHasher,
+        {
+        }
+        unsafe impl<K> TrustedLowerBound for std::collections::hash_set::Drain<'_, K> {}
+        unsafe impl<K> TrustedLowerBound for std::collections::hash_set::IntoIter<K> {}
+        unsafe impl<K> TrustedLowerBound for std::collections::hash_set::Iter<'_, K> {}
+        unsafe impl<T> TrustedLowerBound for std::collections::linked_list::IntoIter<T> {}
+        unsafe impl<T> TrustedLowerBound for std::collections::linked_list::Iter<'_, T> {}
+        unsafe impl<T> TrustedLowerBound for std::collections::linked_list::IterMut<'_, T> {}
+        unsafe impl<T> TrustedLowerBound for std::collections::vec_deque::Drain<'_, T> {}
+        unsafe impl<T> TrustedLowerBound for std::collections::vec_deque::IntoIter<T> {}
+        unsafe impl<T> TrustedLowerBound for std::collections::vec_deque::Iter<'_, T> {}
+        unsafe impl<T> TrustedLowerBound for std::collections::vec_deque::IterMut<'_, T> {}
+        unsafe impl<R: Read> TrustedLowerBound for std::io::Bytes<R> {}
+        unsafe impl<B: BufRead> TrustedLowerBound for std::io::Lines<B> {}
+        unsafe impl<B: BufRead> TrustedLowerBound for std::io::Split<B> {}
+        unsafe impl TrustedLowerBound for std::string::Drain<'_> {}
+        unsafe impl TrustedLowerBound for std::net::Incoming<'_> {}
+        unsafe impl TrustedLowerBound for std::path::Iter<'_> {}
+        unsafe impl<T> TrustedLowerBound for std::sync::mpsc::IntoIter<T> {}
+        unsafe impl<T> TrustedLowerBound for std::sync::mpsc::Iter<'_, T> {}
+        unsafe impl<T> TrustedLowerBound for std::vec::Drain<'_, T> {}
+        unsafe impl<T> TrustedLowerBound for std::vec::IntoIter<T> {}
+
+        #[cfg(target_os = "windows")]
+        mod windows {
+            use crate::TrustedLowerBound;
+            use std::os::windows::ffi::EncodeWide;
+
+            unsafe impl TrustedLowerBound for EncodeWide<'_> {}
+        }
+    }
 }
-unsafe impl<'a, I, T> TrustedLen for Copied<I>
-where
-    I: TrustedLen<Item = &'a T>,
-    T: 'a + Copy,
-{
-}
-unsafe impl<A, B> TrustedLen for Chain<A, B>
-where
-    A: TrustedLen,
-    B: TrustedLen<Item = <A as Iterator>::Item>,
-{
-}
-unsafe impl<A, B> TrustedLen for Zip<A, B>
-where
-    A: TrustedLen,
-    B: TrustedLen,
-{
-}
-unsafe impl<B, I, F> TrustedLen for Map<I, F>
-where
-    F: FnMut(<I as Iterator>::Item) -> B,
-    I: TrustedLen,
-{
-}
-unsafe impl<I> TrustedLen for Enumerate<I> where I: TrustedLen {}
-unsafe impl<'a, A> TrustedLen for core::option::Iter<'a, A> {}
-unsafe impl<'a, A> TrustedLen for core::option::IterMut<'a, A> {}
-unsafe impl<A> TrustedLen for core::option::IntoIter<A> {}
-unsafe impl<'a, A> TrustedLen for core::result::Iter<'a, A> {}
-unsafe impl<'a, A> TrustedLen for core::result::IterMut<'a, A> {}
-unsafe impl<A> TrustedLen for core::result::IntoIter<A> {}
-unsafe impl<'a, T> TrustedLen for core::slice::Iter<'a, T> {}
-unsafe impl<'a, T> TrustedLen for core::slice::IterMut<'a, T> {}
-unsafe impl TrustedLen for Range<usize> {}
-unsafe impl TrustedLen for Range<isize> {}
-unsafe impl TrustedLen for Range<u8> {}
-unsafe impl TrustedLen for Range<i8> {}
-unsafe impl TrustedLen for Range<u16> {}
-unsafe impl TrustedLen for Range<i16> {}
-unsafe impl TrustedLen for Range<u32> {}
-unsafe impl TrustedLen for Range<i32> {}
-unsafe impl TrustedLen for Range<i64> {}
-unsafe impl TrustedLen for Range<u64> {}
-unsafe impl TrustedLen for RangeInclusive<usize> {}
-unsafe impl TrustedLen for RangeInclusive<isize> {}
-unsafe impl TrustedLen for RangeInclusive<u8> {}
-unsafe impl TrustedLen for RangeInclusive<i8> {}
-unsafe impl TrustedLen for RangeInclusive<u16> {}
-unsafe impl TrustedLen for RangeInclusive<i16> {}
-unsafe impl TrustedLen for RangeInclusive<u32> {}
-unsafe impl TrustedLen for RangeInclusive<i32> {}
-unsafe impl TrustedLen for RangeInclusive<i64> {}
-unsafe impl TrustedLen for RangeInclusive<u64> {}
 
 #[cfg(test)]
 mod tests {

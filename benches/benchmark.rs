@@ -1,10 +1,11 @@
 use criterion::{BenchmarkId, Criterion, Throughput};
 use hwlocality::Topology;
-use iterator_ilp::{IteratorILP, TrustedLen};
+use iterator_ilp::{IteratorILP, TrustedLowerBound};
 use multiversion::multiversion;
 use rand::random;
 use std::{iter::Copied, slice};
 
+/// A few benchmarks demonstrating the usefulness of this crate
 #[multiversion(targets = "simd")]
 fn criterion_benchmark(c: &mut Criterion) {
     // Probe cache capacity in unit of floats (or 32-bit numbers in general)
@@ -22,7 +23,6 @@ fn criterion_benchmark(c: &mut Criterion) {
     sum_f32_benchmark(c, min_l1d_floats_pow2, "Iterator::sum::<f32>", |floats| {
         floats.iter().sum::<f32>()
     });
-
     sum_f32_benchmark(c, min_l1d_floats_pow2, "Naive loop", |floats| {
         let mut acc = 0.0;
         for &float in floats {
@@ -138,6 +138,7 @@ fn criterion_benchmark(c: &mut Criterion) {
     );
 }
 
+/// Common logic to all "sum floats" benchmarks
 fn sum_f32_benchmark(
     c: &mut Criterion,
     min_l1d_floats_pow2: u32,
@@ -162,6 +163,7 @@ fn sum_f32_benchmark(
     group.finish();
 }
 
+/// Common logic to all "find integer" benchmarks
 fn find_u32_benchmark(
     c: &mut Criterion,
     min_l1d_u32_pow2: u32,
@@ -192,6 +194,7 @@ fn find_u32_benchmark(
     group.finish();
 }
 
+/// An iterator with side-effects, demonstrating how those affect optimization
 struct SideEffects<'slice> {
     iter: Copied<slice::Iter<'slice, u32>>,
     last: u32,
@@ -216,7 +219,8 @@ impl Drop for SideEffects<'_> {
     }
 }
 //
-unsafe impl TrustedLen for SideEffects<'_> {}
+unsafe impl TrustedLowerBound for SideEffects<'_> {}
 
+// Criterion boilerplate
 criterion::criterion_group!(benches, criterion_benchmark);
 criterion::criterion_main!(benches);
