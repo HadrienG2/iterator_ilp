@@ -200,15 +200,13 @@ struct SideEffects<'slice> {
 impl Iterator for SideEffects<'_> {
     type Item = u32;
 
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (self.iter.len(), Some(self.iter.len()))
+    }
+
     fn next(&mut self) -> Option<Self::Item> {
         self.last += 1;
         self.iter.next()
-    }
-}
-//
-impl ExactSizeIterator for SideEffects<'_> {
-    fn len(&self) -> usize {
-        self.iter.len()
     }
 }
 //
@@ -218,7 +216,7 @@ impl Drop for SideEffects<'_> {
     }
 }
 //
-unsafe impl TrustedLen for SideEffects {}
+unsafe impl TrustedLen for SideEffects<'_> {}
 
 criterion::criterion_group!(benches, criterion_benchmark);
 criterion::criterion_main!(benches);
