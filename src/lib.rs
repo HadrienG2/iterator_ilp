@@ -1,4 +1,5 @@
-//! Iterator extension that provides instruction-parallel reductions
+//! This crate implements an [`Iterator`](core::iter::Iterator) extension that
+//! provides instruction-parallel reductions
 //!
 //! # Motivation
 //!
@@ -62,15 +63,16 @@
 //! data. All iterator methods that perform data reduction (take an iterator of
 //! elements and produce a single result) are affected by this problem to some
 //! degree. All it takes is an operation whose semantics depend on the number
-//! and order of observed iterator items, and the compiler will generate bad code.
+//! of observed iterator items or the order in which operations are performed,
+//! and the compiler will generate bad code.
 //!
 //! And since most of these Iterator methods are documented to perform data
-//! reduction in a specific order, this problem cannot be solved by improving
+//! reduction in a specific way, this problem cannot be solved by improving
 //! the standard library's `Iterator` implementation, at least not without
 //! breaking the API of `Iterator`, which would be Very Bad (tm) and is thus
 //! highly unlikely to happen.
 //!
-//! # What does this crate provide
+//! # What this crate provides
 //!
 //! [`IteratorILP`] is an Iterator extension trait that can be implemented for
 //! all iterators of known length, and provides variants of the standard
@@ -107,7 +109,7 @@
 //! hardware performance depends on many factors:
 //!
 //! - What hardware you are running on
-//! - What hardware features (think SIMD instruction set extensions) are used by
+//! - What hardware features (e.g. SIMD instruction set extensions) are used by
 //!   the compiled program
 //! - What type of data you are manipulating
 //! - How complex your input iterator and the reduction operation are
@@ -134,7 +136,7 @@
 //! whose performance you care about, benchmark it with various numbers of
 //! streams on a broad range of target configurations, and find out the right
 //! compromise for you (which may be a hardware-dependent compromise selected
-//! via `#[cfg()]` attributes if you needed).
+//! via `#[cfg()]` attributes and/or runtime detection if needed).
 
 #![cfg_attr(not(any(test, feature = "std")), no_std)]
 
@@ -153,13 +155,12 @@ use num_traits::{One, Zero};
 
 /// Iterator extension that provides instruction-parallel reductions
 ///
-/// See the crate-level documentation for more information on what
+/// See the [crate-level documentation](crate) for more information on what
 /// instruction-level parallelism is, why it's needed, how much of it you need,
 /// and why standard iterator reductions may not provide enough of it.
 ///
-/// This trait's documentation will instead focus on syntax, specific operations,
-/// how and why ILP reduction semantics differ from standard reduction semantics,
-/// and how to make the best use of them.
+/// This trait's documentation will instead focus on how and why ILP reduction
+/// semantics differ from standard reduction semantics.
 ///
 /// # General strategy
 ///
@@ -201,14 +202,13 @@ use num_traits::{One, Zero};
 /// will switch to it in a breaking release.
 ///
 /// That's it for the general strategy, now to get into the detail of particular
-/// algorithms, we will now divide [`Iterator`] reductions into three categories:
+/// algorithms, we must divide [`Iterator`] reductions into three categories:
 ///
-/// - [Searches](#Searching) like [`Iterator::find()`] iterates until an item
-///   matching a user-provided predicate is found, then aborts iteration.
-/// - [Accumulations](#Accumulating) like [`Iterator::fold()`] sets up an
-///   accumulator and goes through the entire input iterator, combining the
-///   accumulator with each item in a sequence and returning the accumulator at
-///   the end.
+/// - [Searches](#Searching) like [`Iterator::find()`] iterate until an item
+///   matching a user-provided predicate is found, then abort iteration.
+/// - [Accumulations](#Accumulating) like [`Iterator::fold()`] set up an
+///   accumulator and go through the entire input iterator, combining the
+///   accumulator with each item and returning the final accumulator at the end.
 /// - [`Iterator::sum()`] and [`Iterator::product()`] are technically
 ///   accumulations, but their API is so different from that of other
 ///   accumulations that they [are discussed separately](#sum-and-product).
@@ -216,9 +216,9 @@ use num_traits::{One, Zero};
 /// # Searching
 ///
 /// As mentioned earlier, data must be read in groups of `STREAMS` for optimal
-/// instruction level parallelism. As a result, the early exit feature of
-/// Rust's standard search algorithms had to be dropped, and the iterator is
-/// consumed instead.
+/// instruction level parallelism. As a result, the short-circuiting feature of
+/// Rust's standard search algorithms becomes somewhat meaningless and
+/// deceitful, so it was dropped and the iterator is consumed instead.
 ///
 /// Users of iterators with side effects (e.g. [`inspect()`]) must bear in mind
 /// that when using the ILP version of search routines, elements may be read
