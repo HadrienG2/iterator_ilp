@@ -27,9 +27,9 @@
 //!
 //! ```
 //! # let floats = [0.0; 8192];
-//! let mut acc = 0.0;
+//! let mut sum = 0.0;
 //! for &float in &floats {
-//!     acc += float;
+//!     sum += float;
 //! }
 //! ```
 //!
@@ -54,21 +54,21 @@
 //! scalar floating-point operations, with no opportunities for compilers or
 //! hardware to extract parallelism. Without parallelism, hardware capabilities
 //! for small-scale parallelism go to waste, and execution speed becomes limited
-//! not by the CPU's addition throughput (how many unrelated additions it can
-//! compute per second) but by its addition latency (how much time it takes to
-//! compute one addition).
+//! by the CPU's addition latency (how much time it takes to compute one
+//! addition) rather than its addition throughput (how many unrelated additions
+//! it can compute per second).
 //!
-//! Now, the bad news is that this problem is not unique to `Iterator::sum()`,
-//! or even to floating-point data. All iterator methods that perform data
-//! reduction (take an iterator of elements and produce a single result) are
-//! affected by this problem to some degree. All it takes is an operation whose
-//! semantics depend on the number and order of observed iterator items.
+//! This problem is not unique to `Iterator::sum()`, or even to floating-point
+//! data. All iterator methods that perform data reduction (take an iterator of
+//! elements and produce a single result) are affected by this problem to some
+//! degree. All it takes is an operation whose semantics depend on the number
+//! and order of observed iterator items, and the compiler will generate bad code.
 //!
-//! And since most of these methods are documented to perform data reduction
-//! in a specific order, this problem cannot be solved by improving the
-//! standard library's `Iterator` implementation, at least not without breaking
-//! the API of `Iterator`, which would be Very Bad (tm) and is thus highly
-//! unlikely to happen.
+//! And since most of these Iterator methods are documented to perform data
+//! reduction in a specific order, this problem cannot be solved by improving
+//! the standard library's `Iterator` implementation, at least not without
+//! breaking the API of `Iterator`, which would be Very Bad (tm) and is thus
+//! highly unlikely to happen.
 //!
 //! # What does this crate provide
 //!
@@ -107,7 +107,8 @@
 //! hardware performance depends on many factors:
 //!
 //! - What hardware you are running on
-//! - What hardware features (like SIMD instruction set extensions) are enabled
+//! - What hardware features (think SIMD instruction set extensions) are used by
+//!   the compiled program
 //! - What type of data you are manipulating
 //! - How complex your input iterator and the reduction operation are
 //!
@@ -116,9 +117,9 @@
 //! registers, instruction cache...), and at some point you will run out of
 //! these scarce resources and your runtime performance will drop. Even before
 //! that, some internal compiler optimizer code complexity threshold may be
-//! reached at which the compiler will decide to stop optimizing the code of
-//! individual instruction streams as much at it would optimize that of a single
-//! stream, which will reduce performance as well.
+//! reached at which point the compiler will decide to stop optimizing the code
+//! of individual instruction streams as much at it would optimize that of a
+//! normal reduction, which will reduce performance as well.
 //!
 //! To give orders of magnitude, simple reductions, like the floating point sum
 //! discussed above, can benefit from being spread over 16 instruction streams
