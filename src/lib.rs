@@ -16,8 +16,14 @@
 //! Then you come to the realization that the orders of magnitude aren't right.
 //!
 //! The problem lies not in the implementation of `Iterator::sum()`, but in its
-//! definition. `Iterator::sum()` correctly compiles down to the same assembly
-//! as the following loop...
+//! definition. This code...
+//!
+//! ```
+//! # let floats = [0.0; 8192];
+//! let sum = floats.iter().sum::<f32>();
+//! ```
+//!
+//! ...correctly compiles down to the same assembly as that loop...
 //!
 //! ```
 //! # let floats = [0.0; 8192];
@@ -27,17 +33,18 @@
 //! }
 //! ```
 //!
-//! ...but this loop itself isn't right for modern hardware, because it does not
+//! ...but that loop itself isn't right for modern hardware, because it does not
 //! expose enough
 //! [instruction-level parallelism (ILP)](https://en.wikipedia.org/wiki/Instruction-level_parallelism).
 //!
-//! The thing is, the Rust compiler does not allow itself to reorder
+//! To give some context, the Rust compiler does not allow itself to reorder
 //! floating-point operations with respect to what the user wrote. This is a
-//! good thing in general because since floating-point math is not associative,
-//! such optimizations would make program output nondeterministic (depending on
-//! what compiler optimizations were applied) and could break the
+//! good thing in general because floating-point arithmetic is not
+//! [associative](https://en.wikipedia.org/wiki/Associative_property), which
+//! means such optimizations would make program output nondeterministic (it
+//! depends on what compiler optimizations were applied) and could break the
 //! [numerical stability](https://en.wikipedia.org/wiki/Numerical_stability) of
-//! some algorithms.
+//! some trickier algorithms.
 //!
 //! But in the case of the loop above, it also means that whatever optimizations
 //! are applied, the final code must only use one accumulator, and sum the first
@@ -46,15 +53,16 @@
 //! Doing so turns our whole program into a gigantic dependency chain of
 //! scalar floating-point operations, with no opportunities for compilers or
 //! hardware to extract parallelism. Without parallelism, hardware capabilities
-//! for parallel execution go to waste, and execution speed becomes limited not
-//! by the CPU's addition throughput (how many unrelated additions it can
+//! for small-scale parallelism go to waste, and execution speed becomes limited
+//! not by the CPU's addition throughput (how many unrelated additions it can
 //! compute per second) but by its addition latency (how much time it takes to
 //! compute one addition).
 //!
 //! Now, the bad news is that this problem is not unique to `Iterator::sum()`,
 //! or even to floating-point data. All iterator methods that perform data
 //! reduction (take an iterator of elements and produce a single result) are
-//! affected by this problem to some degree.
+//! affected by this problem to some degree. All it takes is an operation whose
+//! semantics depend on the number and order of observed iterator items.
 //!
 //! And since most of these methods are documented to perform data reduction
 //! in a specific order, this problem cannot be solved by improving the
@@ -62,22 +70,20 @@
 //! the API of `Iterator`, which would be Very Bad (tm) and is thus highly
 //! unlikely to happen.
 //!
-//! So instead, this crate proposes to add new data reduction methods to
-//! `Iterator` that let the user break their reductions into multiple
-//! independent iteration streams for the compiler and hardware's satisfaction.
-//! Think [loop unrolling](https://en.wikipedia.org/wiki/Loop_unrolling), but
-//! without the tedium and unreadable code that is typically associated with
-//! manual use of this optimization: you just tell `IteratorILP` how many
-//! instruction streams you want, and it will perform the reduction with that
-//! many instruction streams automagically.
-//!
 //! # What does this crate provide
 //!
-//! [`IteratorILP`] is an Iterator extension trait that is implemented for all
-//! iterators, and provides variants of the standard reduction methods with a
-//! `STREAMS` const generic parameter. By tuning up this parameter, you divide
-//! the iterator reduction work across more and more instruction streams,
-//! exposing more and more instruction-level parallelism.
+//! [`IteratorILP`] is an Iterator extension trait that can be implemented for
+//! all iterators of known length, and provides variants of the standard
+//! reduction methods with a `STREAMS` const generic parameter. By tuning up
+//! this parameter, you divide the iterator reduction work across more and more
+//! instruction streams, exposing more and more instruction-level parallelism
+//! for the compiler and hardware to take advantage of.
+//!
+//! This is effectively
+//! [loop unrolling](https://en.wikipedia.org/wiki/Loop_unrolling), but instead
+//! of making your code unreadable by manually implementing the operation
+//! yourself, you let `IteratorILP` do it for you by just providing it with the
+//! tuning parameter it needs.
 //!
 //! So to reuse the above example...
 //!
@@ -93,7 +99,7 @@
 //! at 2.5 GHz. This corresponds to 6.8 additions per CPU cycle, which is
 //! reasonable when considering that the hardware can do 16 additions per second
 //! on correctly aligned SIMD data, but here the data is _not_ correctly
-//! aligned and hence reaching half the hardware throughput is not unexpected.
+//! aligned and hence reaching about half the hardware throughput is expected.
 //!
 //! # How many instruction streams do I need?
 //!
@@ -115,8 +121,8 @@
 //! stream, which will reduce performance as well.
 //!
 //! To give orders of magnitude, simple reductions, like the floating point sum
-//! discussed above, can benefit from being spread over more than 16 instruction
-//! streams on some hardware (e.g. x86 CPUs with AVX enabled), while complex
+//! discussed above, can benefit from being spread over 16 instruction streams
+//! or more on some hardware (e.g. x86 CPUs with AVX enabled), while complex
 //! reductions (e.g. those using manually vectorized data) may not benefit from
 //! more than 2 streams, or could even already exhibit decreased performance in
 //! that configuration.
@@ -144,75 +150,6 @@ use core::{
 };
 use num_traits::{One, Zero};
 
-/// Polyfill for the unstable [`TrustedLen`](core::iter::TrustedLen) trait
-pub unsafe trait TrustedLen: Iterator {}
-//
-#[cfg(feature = "std")]
-unsafe impl<T> TrustedLen for std::vec::IntoIter<T> {}
-unsafe impl<T> TrustedLen for Empty<T> {}
-unsafe impl<T> TrustedLen for Once<T> {}
-unsafe impl<'a, I> TrustedLen for &'a mut I where I: TrustedLen + ?Sized {}
-unsafe impl<I> TrustedLen for Rev<I> where I: TrustedLen + DoubleEndedIterator {}
-unsafe impl<'a, I, T> TrustedLen for Cloned<I>
-where
-    I: TrustedLen<Item = &'a T>,
-    T: 'a + Clone,
-{
-}
-unsafe impl<'a, I, T> TrustedLen for Copied<I>
-where
-    I: TrustedLen<Item = &'a T>,
-    T: 'a + Copy,
-{
-}
-unsafe impl<A, B> TrustedLen for Chain<A, B>
-where
-    A: TrustedLen,
-    B: TrustedLen<Item = <A as Iterator>::Item>,
-{
-}
-unsafe impl<A, B> TrustedLen for Zip<A, B>
-where
-    A: TrustedLen,
-    B: TrustedLen,
-{
-}
-unsafe impl<B, I, F> TrustedLen for Map<I, F>
-where
-    F: FnMut(<I as Iterator>::Item) -> B,
-    I: TrustedLen,
-{
-}
-unsafe impl<I> TrustedLen for Enumerate<I> where I: TrustedLen {}
-unsafe impl<'a, A> TrustedLen for core::option::Iter<'a, A> {}
-unsafe impl<'a, A> TrustedLen for core::option::IterMut<'a, A> {}
-unsafe impl<A> TrustedLen for core::option::IntoIter<A> {}
-unsafe impl<'a, A> TrustedLen for core::result::Iter<'a, A> {}
-unsafe impl<'a, A> TrustedLen for core::result::IterMut<'a, A> {}
-unsafe impl<A> TrustedLen for core::result::IntoIter<A> {}
-unsafe impl<'a, T> TrustedLen for core::slice::Iter<'a, T> {}
-unsafe impl<'a, T> TrustedLen for core::slice::IterMut<'a, T> {}
-unsafe impl TrustedLen for Range<usize> {}
-unsafe impl TrustedLen for Range<isize> {}
-unsafe impl TrustedLen for Range<u8> {}
-unsafe impl TrustedLen for Range<i8> {}
-unsafe impl TrustedLen for Range<u16> {}
-unsafe impl TrustedLen for Range<i16> {}
-unsafe impl TrustedLen for Range<u32> {}
-unsafe impl TrustedLen for Range<i32> {}
-unsafe impl TrustedLen for Range<i64> {}
-unsafe impl TrustedLen for Range<u64> {}
-unsafe impl TrustedLen for RangeInclusive<usize> {}
-unsafe impl TrustedLen for RangeInclusive<isize> {}
-unsafe impl TrustedLen for RangeInclusive<u8> {}
-unsafe impl TrustedLen for RangeInclusive<i8> {}
-unsafe impl TrustedLen for RangeInclusive<u16> {}
-unsafe impl TrustedLen for RangeInclusive<i16> {}
-unsafe impl TrustedLen for RangeInclusive<u32> {}
-unsafe impl TrustedLen for RangeInclusive<i32> {}
-unsafe impl TrustedLen for RangeInclusive<i64> {}
-unsafe impl TrustedLen for RangeInclusive<u64> {}
-
 /// Iterator extension that provides instruction-parallel reductions
 ///
 /// See the crate-level documentation for more information on what
@@ -223,17 +160,21 @@ unsafe impl TrustedLen for RangeInclusive<u64> {}
 /// how and why ILP reduction semantics differ from standard reduction semantics,
 /// and how to make the best use of them.
 ///
-/// # General considerations
+/// # General strategy
 ///
 /// All reductions provided by this trait use the name of the equivalent
-/// reduction operation provided by the standard `Iterator` trait, with an
+/// reduction operation provided by the standard [`Iterator`] trait, with an
 /// `_ilp` suffix that stands for Instruction-Level Parallelism and a `STREAMS`
 /// const parameter that lets you tune the number of independent instruction
 /// streams that you want to extract.
 ///
-/// ILP reductions are implemented by treating an `Iterator` as the interleaved
-/// output of `STREAMS` different interleaved iterators, that we will call
-/// streams to avoid confusion in the following:
+/// `STREAMS` must be at least one, but at the time of writing we cannot reject
+/// this at the type level, so we handle requests for 0 streams through
+/// panicking instead.
+///
+/// ILP reductions are implemented by treating an [`Iterator`] as the
+/// interleaved output of `STREAMS` different interleaved iterators, that we
+/// will call streams in the following to avoid confusion:
 ///
 /// - The first item is treated as if it were the first item of the first stream
 /// - The second item is treated as if it were the first item of the second stream
@@ -255,16 +196,16 @@ unsafe impl TrustedLen for RangeInclusive<u64> {}
 /// without requiring [`TrustedLen`]. Which, unfortunately, is unstable.
 /// Therefore, we currently approximate it by providing our own version of the
 /// TrustedLen trait which is implemented for all standard library iterators
-/// that implement TrustedLen. Once TrustedLen is stabilized, this crate will
-/// switch to it in a breaking release.
+/// that implement TrustedLen. Once [`TrustedLen`] is stabilized, this crate
+/// will switch to it in a breaking release.
 ///
 /// That's it for the general strategy, now to get into the detail of particular
-/// algorithms, we will now divide `Iterator` reductions into three categories:
+/// algorithms, we will now divide [`Iterator`] reductions into three categories:
 ///
-/// - [Searches](#Searching) like [`Iterator::find()`] iterate until an item
-///   matching a user-provided predicate is found, then abort iteration.
-/// - [Accumulations](#Accumulating) like [`Iterator::fold()`] set up an
-///   accumulator and go through the entire input iterator, combining the
+/// - [Searches](#Searching) like [`Iterator::find()`] iterates until an item
+///   matching a user-provided predicate is found, then aborts iteration.
+/// - [Accumulations](#Accumulating) like [`Iterator::fold()`] sets up an
+///   accumulator and goes through the entire input iterator, combining the
 ///   accumulator with each item in a sequence and returning the accumulator at
 ///   the end.
 /// - [`Iterator::sum()`] and [`Iterator::product()`] are technically
@@ -296,23 +237,25 @@ unsafe impl TrustedLen for RangeInclusive<u64> {}
 /// The main thing to keep in mind when using them is that since accumulation is
 /// performed in a different order, results will differ for non-associative
 /// reduction functions like floating-point summation, and the provided
-/// reduction callable will observe a different sequence of inputs so it should
+/// reduction callable will observe a different sequence of inputs, so it should
 /// not rely on ordering of inputs for correctness.
 ///
 /// # Sum and product
 ///
 /// The definition of the [`Sum`] and [`Product`] traits is very high-level and
 /// does not allow us to inject the right code in the right place in order to
-/// achieve satisfactory code generation. Therefore, our versions of the `sum()`
-/// and `product()` iterator reductions have to use completely different trait
-/// bounds. For sane types, this is mostly transparent, reordering of operations
-/// aside.
+/// achieve satisfactory code generation. Therefore, our versions of the
+/// [`sum()`] and [`product()`] iterator reductions have to use completely
+/// different trait bounds. For sane types, this is mostly transparent,
+/// reordering of operations aside.
 ///
 /// [`fold()`]: Iterator::fold()
 /// [`fold_ilp()`]: IteratorILP::fold_ilp()
 /// [`inspect()`]: Iterator::inspect()
+/// [`product()`]: Iterator::product()
 /// [`product_ilp()`]: IteratorILP::product_ilp()
 /// [`reduce_ilp()`]: IteratorILP::reduce_ilp()
+/// [`sum()`]: Iterator::sum()
 /// [`sum_ilp()`]: IteratorILP::sum_ilp()
 /// [`TrustedLen`]: core::iter::TrustedLen
 pub trait IteratorILP: Iterator + ExactSizeIterator + Sized + TrustedLen {
@@ -612,6 +555,8 @@ unsafe fn next_unchecked<Item>(iter: &mut impl Iterator<Item = Item>) -> Item {
 /// actually a clone of that function. Unfortunately, at the time of
 /// writing, the real thing does not optimize well because the compiler fails to
 /// inline some steps, so we need to clone it for performance...
+//
+// FIXME: Handle panic safety with an RAII guard
 #[inline(always)]
 fn array_from_fn<const SIZE: usize, T>(mut idx_to_elem: impl FnMut(usize) -> T) -> [T; SIZE] {
     let mut result = MaybeUninit::<[T; SIZE]>::uninit();
@@ -624,6 +569,81 @@ fn array_from_fn<const SIZE: usize, T>(mut idx_to_elem: impl FnMut(usize) -> T) 
         result.assume_init()
     }
 }
+
+/// Polyfill for the unstable [`TrustedLen`](core::iter::TrustedLen) trait
+///
+/// Lets you assume that [`ExactSizeIterator`] truly produces the number of
+/// elements that its `len()` method claims in unsafe code.
+///
+/// Do not rely too much on this trait in your codebase, it will be scraped in
+/// favor of the stable version of `TrustedLen` as soon as it lands.
+pub unsafe trait TrustedLen: Iterator {}
+//
+#[cfg(feature = "std")]
+unsafe impl<T> TrustedLen for std::vec::IntoIter<T> {}
+unsafe impl<T> TrustedLen for Empty<T> {}
+unsafe impl<T> TrustedLen for Once<T> {}
+unsafe impl<'a, I> TrustedLen for &'a mut I where I: TrustedLen + ?Sized {}
+unsafe impl<I> TrustedLen for Rev<I> where I: TrustedLen + DoubleEndedIterator {}
+unsafe impl<'a, I, T> TrustedLen for Cloned<I>
+where
+    I: TrustedLen<Item = &'a T>,
+    T: 'a + Clone,
+{
+}
+unsafe impl<'a, I, T> TrustedLen for Copied<I>
+where
+    I: TrustedLen<Item = &'a T>,
+    T: 'a + Copy,
+{
+}
+unsafe impl<A, B> TrustedLen for Chain<A, B>
+where
+    A: TrustedLen,
+    B: TrustedLen<Item = <A as Iterator>::Item>,
+{
+}
+unsafe impl<A, B> TrustedLen for Zip<A, B>
+where
+    A: TrustedLen,
+    B: TrustedLen,
+{
+}
+unsafe impl<B, I, F> TrustedLen for Map<I, F>
+where
+    F: FnMut(<I as Iterator>::Item) -> B,
+    I: TrustedLen,
+{
+}
+unsafe impl<I> TrustedLen for Enumerate<I> where I: TrustedLen {}
+unsafe impl<'a, A> TrustedLen for core::option::Iter<'a, A> {}
+unsafe impl<'a, A> TrustedLen for core::option::IterMut<'a, A> {}
+unsafe impl<A> TrustedLen for core::option::IntoIter<A> {}
+unsafe impl<'a, A> TrustedLen for core::result::Iter<'a, A> {}
+unsafe impl<'a, A> TrustedLen for core::result::IterMut<'a, A> {}
+unsafe impl<A> TrustedLen for core::result::IntoIter<A> {}
+unsafe impl<'a, T> TrustedLen for core::slice::Iter<'a, T> {}
+unsafe impl<'a, T> TrustedLen for core::slice::IterMut<'a, T> {}
+unsafe impl TrustedLen for Range<usize> {}
+unsafe impl TrustedLen for Range<isize> {}
+unsafe impl TrustedLen for Range<u8> {}
+unsafe impl TrustedLen for Range<i8> {}
+unsafe impl TrustedLen for Range<u16> {}
+unsafe impl TrustedLen for Range<i16> {}
+unsafe impl TrustedLen for Range<u32> {}
+unsafe impl TrustedLen for Range<i32> {}
+unsafe impl TrustedLen for Range<i64> {}
+unsafe impl TrustedLen for Range<u64> {}
+unsafe impl TrustedLen for RangeInclusive<usize> {}
+unsafe impl TrustedLen for RangeInclusive<isize> {}
+unsafe impl TrustedLen for RangeInclusive<u8> {}
+unsafe impl TrustedLen for RangeInclusive<i8> {}
+unsafe impl TrustedLen for RangeInclusive<u16> {}
+unsafe impl TrustedLen for RangeInclusive<i16> {}
+unsafe impl TrustedLen for RangeInclusive<u32> {}
+unsafe impl TrustedLen for RangeInclusive<i32> {}
+unsafe impl TrustedLen for RangeInclusive<i64> {}
+unsafe impl TrustedLen for RangeInclusive<u64> {}
 
 #[cfg(test)]
 mod tests {
