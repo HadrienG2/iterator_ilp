@@ -563,7 +563,7 @@ fn array_from_fn<const SIZE: usize, T>(mut idx_to_elem: impl FnMut(usize) -> T) 
     unsafe {
         let mut out_ptr = result.as_mut_ptr().cast::<T>();
         for idx in 0..SIZE {
-            *out_ptr = idx_to_elem(idx);
+            out_ptr.write(idx_to_elem(idx));
             out_ptr = out_ptr.add(1);
         }
         result.assume_init()
