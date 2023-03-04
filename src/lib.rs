@@ -259,7 +259,7 @@ use num_traits::{One, Zero};
 /// [`sum()`]: Iterator::sum()
 /// [`sum_ilp()`]: IteratorILP::sum_ilp()
 /// [`TrustedLen`]: core::iter::TrustedLen
-pub trait IteratorILP: Iterator + ExactSizeIterator + Sized + TrustedLen {
+pub trait IteratorILP: Iterator + Sized + TrustedLen {
     // === Searching ===
 
     /// Like [`Iterator::any()`], but with multiple ILP streams and consumes the
@@ -316,7 +316,8 @@ pub trait IteratorILP: Iterator + ExactSizeIterator + Sized + TrustedLen {
         let mut iter = self.map(|item| predicate(&item).then_some(item));
 
         // Process the regular part of the stream
-        let stream_len = iter.len() / STREAMS;
+        let iter_len = iter.size_hint().1.expect("Iterator length must be known");
+        let stream_len = iter_len / STREAMS;
         for _ in 0..stream_len {
             // Fetch one Option<Item> per stream
             let item_opts: [Option<Self::Item>; STREAMS] =
@@ -386,7 +387,7 @@ pub trait IteratorILP: Iterator + ExactSizeIterator + Sized + TrustedLen {
         mut predicate: impl FnMut(Self::Item) -> bool,
     ) -> Option<usize>
     where
-        Self: DoubleEndedIterator,
+        Self: DoubleEndedIterator + ExactSizeIterator,
     {
         assert_ne!(STREAMS, 0, "Need at least one stream to make progress");
         self.enumerate()
@@ -431,7 +432,8 @@ pub trait IteratorILP: Iterator + ExactSizeIterator + Sized + TrustedLen {
         };
 
         // Accumulate the regular part of the stream
-        let stream_len = self.len() / STREAMS;
+        let iter_len = self.size_hint().1.expect("Iterator length must be known");
+        let stream_len = iter_len / STREAMS;
         for _ in 0..stream_len {
             for acc in &mut accumulators {
                 accumulate(acc, unsafe { next_unchecked(&mut self) });
@@ -534,7 +536,7 @@ pub trait IteratorILP: Iterator + ExactSizeIterator + Sized + TrustedLen {
     }
 }
 
-impl<I: Iterator + ExactSizeIterator + Sized + TrustedLen> IteratorILP for I {}
+impl<I: Iterator + Sized + TrustedLen> IteratorILP for I {}
 
 /// Unchecked variant of `Iterator::next()`
 ///
@@ -573,8 +575,8 @@ fn array_from_fn<const SIZE: usize, T>(mut idx_to_elem: impl FnMut(usize) -> T) 
 
 /// Polyfill for the unstable [`TrustedLen`](core::iter::TrustedLen) trait
 ///
-/// Lets you assume that [`ExactSizeIterator`] truly produces the number of
-/// elements that its `len()` method claims in unsafe code.
+/// Lets you assume that the upper bound reported by `iterator::size_hint()`
+/// is correct for safety.
 ///
 /// Do not rely too much on this trait in your codebase, it will be scraped in
 /// favor of the stable version of `TrustedLen` as soon as it lands.
