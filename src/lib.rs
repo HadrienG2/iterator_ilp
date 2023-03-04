@@ -115,7 +115,7 @@
 //! - How complex your input iterator and the reduction operation are
 //!
 //! Further, you cannot just tune the number of streams up indefinitely because
-//! managing more instruction streams requires more hardware resource (CPU
+//! managing more instruction streams requires more hardware resources (CPU
 //! registers, instruction cache...), and at some point you will run out of
 //! these scarce resources and your runtime performance will drop. Even before
 //! that, some internal compiler optimizer code complexity threshold may be
@@ -170,7 +170,7 @@ use num_traits::{One, Zero};
 /// const parameter that lets you tune the number of independent instruction
 /// streams that you want to extract.
 ///
-/// `STREAMS` must be at least one, but at the time of writing we cannot reject
+/// `STREAMS` must be at least one, but at the time of writing we cannot express
 /// this at the type level, so we handle requests for 0 streams through
 /// panicking instead.
 ///
