@@ -316,8 +316,7 @@ pub trait IteratorILP: Iterator + Sized + TrustedLen {
         let mut iter = self.map(|item| predicate(&item).then_some(item));
 
         // Process the regular part of the stream
-        let iter_len = iter.size_hint().1.expect("Iterator length must be known");
-        let stream_len = iter_len / STREAMS;
+        let stream_len = iter.size_hint().0 / STREAMS;
         for _ in 0..stream_len {
             // Fetch one Option<Item> per stream
             let item_opts: [Option<Self::Item>; STREAMS] =
@@ -432,8 +431,7 @@ pub trait IteratorILP: Iterator + Sized + TrustedLen {
         };
 
         // Accumulate the regular part of the stream
-        let iter_len = self.size_hint().1.expect("Iterator length must be known");
-        let stream_len = iter_len / STREAMS;
+        let stream_len = self.size_hint().0 / STREAMS;
         for _ in 0..stream_len {
             for acc in &mut accumulators {
                 accumulate(acc, unsafe { next_unchecked(&mut self) });
@@ -441,9 +439,7 @@ pub trait IteratorILP: Iterator + Sized + TrustedLen {
         }
 
         // Accumulate irregular elements at the end
-        for (acc, item) in accumulators.iter_mut().zip(self) {
-            accumulate(acc, item);
-        }
+        self.for_each(|item| accumulate(&mut accumulators[0], item));
 
         // Merge the accumulators
         let mut stride = STREAMS;
@@ -575,8 +571,8 @@ fn array_from_fn<const SIZE: usize, T>(mut idx_to_elem: impl FnMut(usize) -> T) 
 
 /// Polyfill for the unstable [`TrustedLen`](core::iter::TrustedLen) trait
 ///
-/// Lets you assume that the upper bound reported by `iterator::size_hint()`
-/// is correct for safety.
+/// Lets you assume that the bounds reported by `iterator::size_hint()` are
+/// correct for safety.
 ///
 /// Do not rely too much on this trait in your codebase, it will be scraped in
 /// favor of the stable version of `TrustedLen` as soon as it lands.
