@@ -549,18 +549,65 @@ unsafe fn next_unchecked<Item>(iter: &mut impl Iterator<Item = Item>) -> Item {
 /// actually a clone of that function. Unfortunately, at the time of
 /// writing, the real thing does not optimize well because the compiler fails to
 /// inline some steps, so we need to clone it for performance...
-//
-// FIXME: Handle panic safety with an RAII guard
 #[inline(always)]
 fn array_from_fn<const SIZE: usize, T>(mut idx_to_elem: impl FnMut(usize) -> T) -> [T; SIZE] {
-    let mut result = MaybeUninit::<[T; SIZE]>::uninit();
-    unsafe {
-        let mut out_ptr = result.as_mut_ptr().cast::<T>();
-        for idx in 0..SIZE {
-            out_ptr.write(idx_to_elem(idx));
-            out_ptr = out_ptr.add(1);
+    let mut array = PartialArray::new();
+    for idx in 0..SIZE {
+        array.push(idx_to_elem(idx));
+    }
+    array.collect()
+}
+
+/// Partially initialized array
+struct PartialArray<T, const N: usize> {
+    inner: MaybeUninit<[T; N]>,
+    num_initialized: usize,
+}
+//
+impl<T, const N: usize> PartialArray<T, N> {
+    /// Prepare to iteratively initialize an array
+    #[inline(always)]
+    fn new() -> Self {
+        Self {
+            inner: MaybeUninit::uninit(),
+            num_initialized: 0,
         }
-        result.assume_init()
+    }
+
+    /// Initialize the next array element
+    #[inline(always)]
+    fn push(&mut self, value: T) {
+        assert!(self.num_initialized < N);
+        unsafe {
+            let ptr = self
+                .inner
+                .as_mut_ptr()
+                .cast::<T>()
+                .add(self.num_initialized);
+            ptr.write(value);
+            self.num_initialized += 1;
+        }
+    }
+
+    /// Assume the array is fully initialized and collect its value
+    #[inline(always)]
+    fn collect(self) -> [T; N] {
+        assert_eq!(self.num_initialized, N);
+        unsafe {
+            let result = self.inner.assume_init_read();
+            std::mem::forget(self);
+            result
+        }
+    }
+}
+//
+impl<T, const N: usize> Drop for PartialArray<T, N> {
+    /// Drop already initialized elements on panic
+    fn drop(&mut self) {
+        let ptr = self.inner.as_mut_ptr().cast::<T>();
+        for idx in 0..self.num_initialized {
+            unsafe { ptr.add(idx).drop_in_place() };
+        }
     }
 }
 
