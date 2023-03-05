@@ -1,0 +1,161 @@
+# There are two kinds of continuous integration jobs in this project:
+#
+# - Every code submission or master push passes continuous integration on the
+#   minimal supported Rust version and the current stable Rust version.
+# - Two times a month, a scheduled job makes sure that the code remains
+#   compatible and lint-free on upcoming Rust toolchains (beta and nightly).
+
+on:
+  push:
+  pull_request:
+  schedule:
+    - cron: '0 0 2,16 * *'
+
+name: Continuous Integration
+
+env:
+  RUSTFLAGS: -D warnings
+  RUSTDOCFLAGS: -D warnings
+
+jobs:
+  # Auto-format, clippy and rustc lints do not depend on the operating system
+  # and only need to be tested on the latest supported release of each CI run.
+  # We don't care about warnings on the minimum supported Rust version, only
+  # about building and running correctly.
+  lints:
+    # Only run on "pull_request" event for external PRs. This is to avoid
+    # duplicate builds for PRs created from internal branches.
+    if: github.event_name == 'push' || github.event_name == 'schedule' || github.event.pull_request.head.repo.full_name != github.repository
+
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        features:
+          - ""
+          - "--no-default-features"
+
+    defaults:
+      run:
+        working-directory: ./counter
+
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v3
+
+      - uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          version: 1.0
+          packages: libhwloc-dev
+
+      - name: Set up stable toolchain
+        if: github.event_name != 'schedule'
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          components: rustfmt,clippy
+
+      - name: Set up nightly toolchain
+        if: github.event_name == 'schedule'
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: nightly
+          components: rustfmt,clippy
+
+      - name: Check code formatting
+        run: cargo fmt -- --check
+
+      - name: Render the docs
+        run: cargo doc ${{ matrix.features }}
+
+      - name: Type-check the program
+        run: cargo check --all-targets ${{ matrix.features }}
+
+      - name: Check clippy lints
+        run: cargo clippy ${{ matrix.features }} -- -D warnings
+
+
+  # Run the tests on all supported OSes and Rust versions (main CI)
+  test-contrib:
+    # Only run on "pull_request" event for external PRs. This is to avoid
+    # duplicate builds for PRs created from internal branches.
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
+
+    strategy:
+      matrix:
+        features:
+          - ""
+          - "--no-default-features"
+        rust:
+          - stable
+          - 1.65.0  # Minimum supported Rust version
+
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: ./counter
+
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v3
+
+      - uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          version: 1.0
+          packages: libhwloc-dev
+
+      - name: Set up toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: ${{ matrix.rust }}
+
+      - name: Run tests
+        run: cargo test ${{ matrix.features }}
+
+      - name: Check that benchmarks build
+        run: cargo build --benches ${{ matrix.features }}
+
+
+  # Check compatibility with newer Rust/deps versions (scheduled CI)
+  #
+  # FIXME: There should be a way to use conditional build matrices without
+  #        duplicating the whole job recipe...
+  #
+  test-scheduled:
+    if: github.event_name == 'schedule'
+
+    strategy:
+      matrix:
+        features:
+          - ""
+          - "--no-default-features"
+        rust:
+          - beta
+          - nightly
+          - 1.65.0  # Minimum supported Rust version (can be broken by deps)
+
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: ./counter
+
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v3
+
+      - uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          version: 1.0
+          packages: libhwloc-dev
+
+      - name: Set up toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: ${{ matrix.rust }}
+
+      - name: Run tests
+        run: cargo test ${{ matrix.features }}
+
+      - name: Check that benchmarks build
+        run: cargo build --benches ${{ matrix.features }}
