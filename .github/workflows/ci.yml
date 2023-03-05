@@ -35,10 +35,6 @@ jobs:
           - ""
           - "--no-default-features"
 
-    defaults:
-      run:
-        working-directory: ./counter
-
     steps:
       - name: Checkout sources
         uses: actions/checkout@v3
@@ -91,10 +87,6 @@ jobs:
 
     runs-on: ubuntu-latest
 
-    defaults:
-      run:
-        working-directory: ./counter
-
     steps:
       - name: Checkout sources
         uses: actions/checkout@v3
@@ -135,10 +127,6 @@ jobs:
           - 1.65.0  # Minimum supported Rust version (can be broken by deps)
 
     runs-on: ubuntu-latest
-
-    defaults:
-      run:
-        working-directory: ./counter
 
     steps:
       - name: Checkout sources
