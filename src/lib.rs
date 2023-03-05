@@ -597,7 +597,7 @@ impl<T, const N: usize> PartialArray<T, N> {
         assert_eq!(self.num_initialized, N);
         unsafe {
             let result = self.inner.assume_init_read();
-            std::mem::forget(self);
+            core::mem::forget(self);
             result
         }
     }
