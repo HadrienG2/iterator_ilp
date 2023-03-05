@@ -440,7 +440,9 @@ pub trait IteratorILP: Iterator + Sized + TrustedLowerBound {
         }
 
         // Accumulate irregular elements at the end
-        self.for_each(|item| accumulate(&mut accumulators[0], item));
+        for (idx, item) in self.enumerate() {
+            accumulate(&mut accumulators[idx % STREAMS], item);
+        }
 
         // Merge the accumulators
         let mut stride = STREAMS;
