@@ -83,7 +83,7 @@ jobs:
           - "--no-default-features"
         rust:
           - stable
-          - 1.65.0  # Minimum supported Rust version
+          - 1.66.0  # Minimum supported Rust version
 
     runs-on: ubuntu-latest
 
@@ -124,7 +124,7 @@ jobs:
         rust:
           - beta
           - nightly
-          - 1.65.0  # Minimum supported Rust version (can be broken by deps)
+          - 1.66.0  # Minimum supported Rust version (can be broken by deps)
 
     runs-on: ubuntu-latest
 
