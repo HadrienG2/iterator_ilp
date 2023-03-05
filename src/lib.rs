@@ -615,6 +615,8 @@ impl<T, const N: usize> Drop for PartialArray<T, N> {
 
 /// An iterator that reports an accurate lower bound using [`size_hint()`]
 ///
+/// # Safety
+///
 /// The lower bound reported by this iterator is guaranteed to be accurate, in
 /// the sense that the iterator cannot output less items. Unsafe code can rely
 /// on this being correct for safety.
