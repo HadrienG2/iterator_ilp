@@ -536,7 +536,7 @@ impl<I: Iterator + Sized + TrustedLowerBound> IteratorILP for I {}
 /// # Safety
 ///
 /// Iterator must contain one more item (you can assert this with TrustedLen)
-#[inline(always)]
+#[inline]
 unsafe fn next_unchecked<Item>(iter: &mut impl Iterator<Item = Item>) -> Item {
     if let Some(item) = iter.next() {
         item
@@ -551,7 +551,7 @@ unsafe fn next_unchecked<Item>(iter: &mut impl Iterator<Item = Item>) -> Item {
 /// actually a clone of that function. Unfortunately, at the time of
 /// writing, the real thing does not optimize well because the compiler fails to
 /// inline some steps, so we need to clone it for performance...
-#[inline(always)]
+#[inline]
 fn array_from_fn<const SIZE: usize, T>(mut idx_to_elem: impl FnMut(usize) -> T) -> [T; SIZE] {
     let mut array = PartialArray::new();
     for idx in 0..SIZE {
@@ -568,7 +568,7 @@ struct PartialArray<T, const N: usize> {
 //
 impl<T, const N: usize> PartialArray<T, N> {
     /// Prepare to iteratively initialize an array
-    #[inline(always)]
+    #[inline]
     fn new() -> Self {
         Self {
             inner: MaybeUninit::uninit(),
@@ -577,7 +577,7 @@ impl<T, const N: usize> PartialArray<T, N> {
     }
 
     /// Initialize the next array element
-    #[inline(always)]
+    #[inline]
     fn push(&mut self, value: T) {
         assert!(self.num_initialized < N);
         unsafe {
@@ -592,7 +592,7 @@ impl<T, const N: usize> PartialArray<T, N> {
     }
 
     /// Assume the array is fully initialized and collect its value
-    #[inline(always)]
+    #[inline]
     fn collect(self) -> [T; N] {
         assert_eq!(self.num_initialized, N);
         unsafe {
