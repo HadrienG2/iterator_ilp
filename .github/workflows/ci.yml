@@ -16,6 +16,7 @@ name: Continuous Integration
 env:
   RUSTFLAGS: -D warnings
   RUSTDOCFLAGS: -D warnings
+  MSRV: 1.70.0
 
 jobs:
   # Auto-format, clippy and rustc lints do not depend on the operating system
@@ -83,7 +84,7 @@ jobs:
           - "--no-default-features"
         rust:
           - stable
-          - 1.66.0  # Minimum supported Rust version
+          - $MSRV  # Minimum supported Rust version
 
     runs-on: ubuntu-latest
 
@@ -124,7 +125,7 @@ jobs:
         rust:
           - beta
           - nightly
-          - 1.66.0  # Minimum supported Rust version (can be broken by deps)
+          - $MSRV  # Minimum supported Rust version (can be broken by deps)
 
     runs-on: ubuntu-latest
 
