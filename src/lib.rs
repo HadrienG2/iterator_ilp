@@ -1,5 +1,5 @@
-//! This crate implements an [`Iterator`](core::iter::Iterator) extension that
-//! provides instruction-parallel reductions
+//! This crate implements an [`Iterator`] extension that provides
+//! instruction-parallel reductions
 //!
 //! # Motivation
 //!
@@ -10,10 +10,10 @@
 //! in the CPU's L1d cache (which is a precondition for maximal computation
 //! performance) sums about a billion numbers per second. This may seem
 //! reasonable until you realize that modern CPUs have multi-GHz clock rates,
-//! can process
-//! [multiple instructions per clock cycle](https://en.wikipedia.org/wiki/Superscalar_processor),
-//! and can sum
-//! [multiple floating-point numbers per instruction](https://en.wikipedia.org/wiki/Single_instruction,_multiple_data).
+//! can process [multiple instructions per clock
+//! cycle](https://en.wikipedia.org/wiki/Superscalar_processor), and can sum
+//! [multiple floating-point numbers per
+//! instruction](https://en.wikipedia.org/wiki/Single_instruction,_multiple_data).
 //! Then you come to the realization that the orders of magnitude aren't right.
 //!
 //! The problem lies not in the implementation of `Iterator::sum()`, but in its
@@ -35,8 +35,8 @@
 //! ```
 //!
 //! ...but that loop itself isn't right for modern hardware, because it does not
-//! expose enough
-//! [instruction-level parallelism (ILP)](https://en.wikipedia.org/wiki/Instruction-level_parallelism).
+//! expose enough [instruction-level parallelism
+//! (ILP)](https://en.wikipedia.org/wiki/Instruction-level_parallelism).
 //!
 //! To give some context, the Rust compiler does not allow itself to reorder
 //! floating-point operations with respect to what the user wrote. This is a
