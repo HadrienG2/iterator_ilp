@@ -146,7 +146,6 @@ use core::{
     cell::RefCell,
     hint::unreachable_unchecked,
     iter::{ExactSizeIterator, Iterator},
-    mem::MaybeUninit,
     ops::{Add, Mul},
 };
 use num_traits::{One, Zero};
@@ -424,7 +423,8 @@ pub trait IteratorILP: Iterator + Sized + TrustedLowerBound {
         assert_ne!(STREAMS, 0, "Need at least one stream to make progress");
 
         // Set up accumulators
-        let mut accumulators = core::array::from_fn::<STREAMS, _>(|_| Some(neutral()));
+        let mut accumulators: [Option<Acc>; STREAMS] =
+            core::array::from_fn(|_| Some(neutral()));
         let mut accumulate = |accumulator: &mut Option<Acc>, item| {
             if let Some(prev_acc) = accumulator.take() {
                 *accumulator = Some(accumulate(prev_acc, item));
