@@ -321,7 +321,7 @@ pub trait IteratorILP: Iterator + Sized + TrustedLowerBound {
         for _ in 0..stream_len {
             // Fetch one Option<Item> per stream
             let item_opts: [Option<Self::Item>; STREAMS] =
-                array_from_fn(|_| unsafe { next_unchecked(&mut iter) });
+                core::array::from_fn(|_| unsafe { next_unchecked(&mut iter) });
 
             // Check if the item of interest was found
             if let Some(item) = item_opts.into_iter().flatten().next() {
@@ -424,7 +424,7 @@ pub trait IteratorILP: Iterator + Sized + TrustedLowerBound {
         assert_ne!(STREAMS, 0, "Need at least one stream to make progress");
 
         // Set up accumulators
-        let mut accumulators = array_from_fn::<STREAMS, _>(|_| Some(neutral()));
+        let mut accumulators = core::array::from_fn::<STREAMS, _>(|_| Some(neutral()));
         let mut accumulate = |accumulator: &mut Option<Acc>, item| {
             if let Some(prev_acc) = accumulator.take() {
                 *accumulator = Some(accumulate(prev_acc, item));
@@ -542,74 +542,6 @@ unsafe fn next_unchecked<Item>(iter: &mut impl Iterator<Item = Item>) -> Item {
         item
     } else {
         unreachable_unchecked()
-    }
-}
-
-/// Build an array using a mapping from index to value
-///
-/// This may look suspiciously like `std::array::from_fn()`, because it is
-/// actually a clone of that function. Unfortunately, at the time of
-/// writing, the real thing does not optimize well because the compiler fails to
-/// inline some steps, so we need to clone it for performance...
-#[inline]
-fn array_from_fn<const SIZE: usize, T>(mut idx_to_elem: impl FnMut(usize) -> T) -> [T; SIZE] {
-    let mut array = PartialArray::new();
-    for idx in 0..SIZE {
-        array.push(idx_to_elem(idx));
-    }
-    array.collect()
-}
-
-/// Partially initialized array
-struct PartialArray<T, const N: usize> {
-    inner: MaybeUninit<[T; N]>,
-    num_initialized: usize,
-}
-//
-impl<T, const N: usize> PartialArray<T, N> {
-    /// Prepare to iteratively initialize an array
-    #[inline]
-    fn new() -> Self {
-        Self {
-            inner: MaybeUninit::uninit(),
-            num_initialized: 0,
-        }
-    }
-
-    /// Initialize the next array element
-    #[inline]
-    fn push(&mut self, value: T) {
-        assert!(self.num_initialized < N);
-        unsafe {
-            let ptr = self
-                .inner
-                .as_mut_ptr()
-                .cast::<T>()
-                .add(self.num_initialized);
-            ptr.write(value);
-            self.num_initialized += 1;
-        }
-    }
-
-    /// Assume the array is fully initialized and collect its value
-    #[inline]
-    fn collect(self) -> [T; N] {
-        assert_eq!(self.num_initialized, N);
-        unsafe {
-            let result = self.inner.assume_init_read();
-            core::mem::forget(self);
-            result
-        }
-    }
-}
-//
-impl<T, const N: usize> Drop for PartialArray<T, N> {
-    /// Drop already initialized elements on panic
-    fn drop(&mut self) {
-        let ptr = self.inner.as_mut_ptr().cast::<T>();
-        for idx in 0..self.num_initialized {
-            unsafe { ptr.add(idx).drop_in_place() };
-        }
     }
 }
 
