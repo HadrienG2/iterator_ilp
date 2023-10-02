@@ -423,8 +423,7 @@ pub trait IteratorILP: Iterator + Sized + TrustedLowerBound {
         assert_ne!(STREAMS, 0, "Need at least one stream to make progress");
 
         // Set up accumulators
-        let mut accumulators: [Option<Acc>; STREAMS] =
-            core::array::from_fn(|_| Some(neutral()));
+        let mut accumulators: [Option<Acc>; STREAMS] = core::array::from_fn(|_| Some(neutral()));
         let mut accumulate = |accumulator: &mut Option<Acc>, item| {
             if let Some(prev_acc) = accumulator.take() {
                 *accumulator = Some(accumulate(prev_acc, item));
