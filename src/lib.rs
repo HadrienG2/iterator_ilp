@@ -892,110 +892,112 @@ mod core_iters {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use quickcheck_macros::quickcheck;
+    use proptest::prelude::*;
 
-    #[quickcheck]
-    fn any(dataset: Vec<u8>, needle: u8) {
-        let predicate = |&item| item == needle;
-        let expected = dataset.iter().any(predicate);
-        assert_eq!(dataset.iter().any_ilp::<1>(predicate), expected);
-        assert_eq!(dataset.iter().any_ilp::<2>(predicate), expected);
-        assert_eq!(dataset.iter().any_ilp::<3>(predicate), expected);
-    }
+    proptest! {
+        #[test]
+        fn any(dataset: Vec<u8>, needle: u8) {
+            let predicate = |&item| item == needle;
+            let expected = dataset.iter().any(predicate);
+            prop_assert_eq!(dataset.iter().any_ilp::<1>(predicate), expected);
+            prop_assert_eq!(dataset.iter().any_ilp::<2>(predicate), expected);
+            prop_assert_eq!(dataset.iter().any_ilp::<3>(predicate), expected);
+        }
 
-    #[quickcheck]
-    fn all(dataset: Vec<u8>, needle: u8) {
-        let predicate = |&item| item == needle;
-        let expected = dataset.iter().all(predicate);
-        assert_eq!(dataset.iter().all_ilp::<1>(predicate), expected);
-        assert_eq!(dataset.iter().all_ilp::<2>(predicate), expected);
-        assert_eq!(dataset.iter().all_ilp::<3>(predicate), expected);
-    }
+        #[test]
+        fn all(dataset: Vec<u8>, needle: u8) {
+            let predicate = |&item| item == needle;
+            let expected = dataset.iter().all(predicate);
+            prop_assert_eq!(dataset.iter().all_ilp::<1>(predicate), expected);
+            prop_assert_eq!(dataset.iter().all_ilp::<2>(predicate), expected);
+            prop_assert_eq!(dataset.iter().all_ilp::<3>(predicate), expected);
+        }
 
-    #[quickcheck]
-    fn find(dataset: Vec<u8>, needle: u8) {
-        let predicate = |item: &&u8| **item == needle;
-        let expected = dataset.iter().find(predicate);
-        assert_eq!(dataset.iter().find_ilp::<1>(predicate), expected);
-        assert_eq!(dataset.iter().find_ilp::<2>(predicate), expected);
-        assert_eq!(dataset.iter().find_ilp::<3>(predicate), expected);
-    }
+        #[test]
+        fn find(dataset: Vec<u8>, needle: u8) {
+            let predicate = |item: &&u8| **item == needle;
+            let expected = dataset.iter().find(predicate);
+            prop_assert_eq!(dataset.iter().find_ilp::<1>(predicate), expected);
+            prop_assert_eq!(dataset.iter().find_ilp::<2>(predicate), expected);
+            prop_assert_eq!(dataset.iter().find_ilp::<3>(predicate), expected);
+        }
 
-    #[quickcheck]
-    fn find_map(dataset: Vec<u8>, needle: u8) {
-        let find_map = |item: &u8| (*item == needle).then_some(42);
-        let expected = dataset.iter().find_map(find_map);
-        assert_eq!(dataset.iter().find_map_ilp::<1, _>(find_map), expected);
-        assert_eq!(dataset.iter().find_map_ilp::<2, _>(find_map), expected);
-        assert_eq!(dataset.iter().find_map_ilp::<3, _>(find_map), expected);
-    }
+        #[test]
+        fn find_map(dataset: Vec<u8>, needle: u8) {
+            let find_map = |item: &u8| (*item == needle).then_some(42);
+            let expected = dataset.iter().find_map(find_map);
+            prop_assert_eq!(dataset.iter().find_map_ilp::<1, _>(find_map), expected);
+            prop_assert_eq!(dataset.iter().find_map_ilp::<2, _>(find_map), expected);
+            prop_assert_eq!(dataset.iter().find_map_ilp::<3, _>(find_map), expected);
+        }
 
-    #[quickcheck]
-    fn position(dataset: Vec<u8>, needle: u8) {
-        let predicate = |item: &u8| *item == needle;
-        let expected = dataset.iter().position(predicate);
-        assert_eq!(dataset.iter().position_ilp::<1>(predicate), expected);
-        assert_eq!(dataset.iter().position_ilp::<2>(predicate), expected);
-        assert_eq!(dataset.iter().position_ilp::<3>(predicate), expected);
-    }
+        #[test]
+        fn position(dataset: Vec<u8>, needle: u8) {
+            let predicate = |item: &u8| *item == needle;
+            let expected = dataset.iter().position(predicate);
+            prop_assert_eq!(dataset.iter().position_ilp::<1>(predicate), expected);
+            prop_assert_eq!(dataset.iter().position_ilp::<2>(predicate), expected);
+            prop_assert_eq!(dataset.iter().position_ilp::<3>(predicate), expected);
+        }
 
-    #[quickcheck]
-    fn rposition(dataset: Vec<u8>, needle: u8) {
-        let predicate = |item: &u8| *item == needle;
-        let expected = dataset.iter().rposition(predicate);
-        assert_eq!(dataset.iter().rposition_ilp::<1>(predicate), expected);
-        assert_eq!(dataset.iter().rposition_ilp::<2>(predicate), expected);
-        assert_eq!(dataset.iter().rposition_ilp::<3>(predicate), expected);
-    }
+        #[test]
+        fn rposition(dataset: Vec<u8>, needle: u8) {
+            let predicate = |item: &u8| *item == needle;
+            let expected = dataset.iter().rposition(predicate);
+            prop_assert_eq!(dataset.iter().rposition_ilp::<1>(predicate), expected);
+            prop_assert_eq!(dataset.iter().rposition_ilp::<2>(predicate), expected);
+            prop_assert_eq!(dataset.iter().rposition_ilp::<3>(predicate), expected);
+        }
 
-    #[quickcheck]
-    fn fold(dataset: Vec<u8>) {
-        let zero = || 0;
-        let accumulate = |a, &b| a + b as u64;
-        let merge = |a, b| a + b;
-        let expected = dataset.iter().fold(zero(), accumulate);
-        assert_eq!(
-            dataset.iter().fold_ilp::<1, _>(zero, accumulate, merge),
-            expected
-        );
-        assert_eq!(
-            dataset.iter().fold_ilp::<2, _>(zero, accumulate, merge),
-            expected
-        );
-        assert_eq!(
-            dataset.iter().fold_ilp::<3, _>(zero, accumulate, merge),
-            expected
-        );
-    }
+        #[test]
+        fn fold(dataset: Vec<u8>) {
+            let zero = || 0;
+            let accumulate = |a, &b| a + b as u64;
+            let merge = |a, b| a + b;
+            let expected = dataset.iter().fold(zero(), accumulate);
+            prop_assert_eq!(
+                dataset.iter().fold_ilp::<1, _>(zero, accumulate, merge),
+                expected
+            );
+            prop_assert_eq!(
+                dataset.iter().fold_ilp::<2, _>(zero, accumulate, merge),
+                expected
+            );
+            prop_assert_eq!(
+                dataset.iter().fold_ilp::<3, _>(zero, accumulate, merge),
+                expected
+            );
+        }
 
-    #[quickcheck]
-    fn reduce(dataset: Vec<u64>) {
-        let reduce = |a: u64, b| a.wrapping_add(b);
-        let expected = dataset.iter().copied().reduce(reduce);
-        assert_eq!(dataset.iter().copied().reduce_ilp::<1>(reduce), expected);
-        assert_eq!(dataset.iter().copied().reduce_ilp::<2>(reduce), expected);
-        assert_eq!(dataset.iter().copied().reduce_ilp::<3>(reduce), expected);
-    }
+        #[test]
+        fn reduce(dataset: Vec<u64>) {
+            let reduce = |a: u64, b| a.wrapping_add(b);
+            let expected = dataset.iter().copied().reduce(reduce);
+            prop_assert_eq!(dataset.iter().copied().reduce_ilp::<1>(reduce), expected);
+            prop_assert_eq!(dataset.iter().copied().reduce_ilp::<2>(reduce), expected);
+            prop_assert_eq!(dataset.iter().copied().reduce_ilp::<3>(reduce), expected);
+        }
 
-    #[quickcheck]
-    fn sum(dataset: Vec<u8>) {
-        let dataset = dataset.into_iter().map(|i| i as u64).collect::<Vec<_>>();
-        let expected = dataset.iter().copied().sum::<u64>();
-        assert_eq!(dataset.iter().copied().sum_ilp::<1, u64>(), expected);
-        assert_eq!(dataset.iter().copied().sum_ilp::<2, u64>(), expected);
-        assert_eq!(dataset.iter().copied().sum_ilp::<3, u64>(), expected);
-    }
+        #[test]
+        fn sum(dataset: Vec<u8>) {
+            let dataset = dataset.into_iter().map(|i| i as u64).collect::<Vec<_>>();
+            let expected = dataset.iter().copied().sum::<u64>();
+            prop_assert_eq!(dataset.iter().copied().sum_ilp::<1, u64>(), expected);
+            prop_assert_eq!(dataset.iter().copied().sum_ilp::<2, u64>(), expected);
+            prop_assert_eq!(dataset.iter().copied().sum_ilp::<3, u64>(), expected);
+        }
 
-    #[quickcheck]
-    fn product(dataset: Vec<u8>) {
-        let dataset = dataset
-            .into_iter()
-            .map(|i| (i as f64 / 256.0) + 0.5)
-            .collect::<Vec<_>>();
-        let expected = dataset.iter().copied().product::<f64>();
-        let assert_close = |result: f64| assert!((result - expected).abs() < 1e-6 * expected.abs());
-        assert_close(dataset.iter().copied().product_ilp::<1, f64>());
-        assert_close(dataset.iter().copied().product_ilp::<2, f64>());
-        assert_close(dataset.iter().copied().product_ilp::<3, f64>());
+        #[test]
+        fn product(dataset: Vec<u8>) {
+            let dataset = dataset
+                .into_iter()
+                .map(|i| (i as f64 / 256.0) + 0.5)
+                .collect::<Vec<_>>();
+            let expected = dataset.iter().copied().product::<f64>();
+            let assert_close = |result: f64| Ok(prop_assert!((result - expected).abs() < 1e-6 * expected.abs()));
+            assert_close(dataset.iter().copied().product_ilp::<1, f64>())?;
+            assert_close(dataset.iter().copied().product_ilp::<2, f64>())?;
+            assert_close(dataset.iter().copied().product_ilp::<3, f64>())?;
+        }
     }
 }
