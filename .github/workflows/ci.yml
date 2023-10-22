@@ -33,8 +33,11 @@ jobs:
     strategy:
       matrix:
         features:
-          - ""
-          - "--no-default-features"
+          - '""'
+          - 'std'
+
+    env:
+      FEATURE_FLAGS: '--no-default-features --features=${{ matrix.features }}'
 
     steps:
       - name: Checkout sources
@@ -62,13 +65,20 @@ jobs:
         run: cargo fmt -- --check
 
       - name: Render the docs
-        run: cargo doc ${{ matrix.features }}
+        run: cargo doc ${{ env.FEATURE_FLAGS }}
 
       - name: Type-check the program
-        run: cargo check --all-targets ${{ matrix.features }}
+        run: cargo check --all-targets ${{ env.FEATURE_FLAGS }}
 
       - name: Check clippy lints
-        run: cargo clippy ${{ matrix.features }} -- -D warnings
+        run: cargo clippy ${{ env.FEATURE_FLAGS }} -- -D warnings
+
+      - name: Check semver
+        uses: obi1kenobi/cargo-semver-checks-action@v2
+        with:
+          feature-group: only-explicit-features
+          feature: ${{ matrix.features }}
+          rust-toolchain: manual
 
 
   # Run the tests on all supported OSes and Rust versions (main CI)
