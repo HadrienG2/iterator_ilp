@@ -77,7 +77,7 @@ jobs:
         uses: obi1kenobi/cargo-semver-checks-action@v2
         with:
           feature-group: only-explicit-features
-          feature: ${{ matrix.features }}
+          features: ${{ matrix.features }}
           rust-toolchain: manual
 
 
