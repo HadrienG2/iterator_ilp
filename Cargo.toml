@@ -42,9 +42,6 @@ harness = false
 [profile.bench]
 codegen-units = 1
 
-[profile.test]
-opt-level = 1
-
 [profile.test.package.proptest]
 opt-level = 3
 

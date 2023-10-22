@@ -144,7 +144,6 @@
 use core::iter::{FusedIterator, Product, Sum};
 use core::{
     cell::RefCell,
-    hint::unreachable_unchecked,
     iter::{ExactSizeIterator, Iterator},
     ops::{Add, Mul},
 };
@@ -320,7 +319,11 @@ pub trait IteratorILP: Iterator + Sized + TrustedLowerBound {
         for _ in 0..stream_len {
             // Fetch one Option<Item> per stream
             let item_opts: [Option<Self::Item>; STREAMS] =
-                core::array::from_fn(|_| unsafe { next_unchecked(&mut iter) });
+                // SAFETY: The TrustedLowerBound contract lets us assume than
+                //         the lower bound returned by size_hint is correct, and
+                //         the above loop will not iterate for more than this
+                //         amount of iteration, so this is trusted to be safe.
+                core::array::from_fn(|_| unsafe { iter.next().unwrap_unchecked() });
 
             // Check if the item of interest was found
             if let Some(item) = item_opts.into_iter().flatten().next() {
@@ -434,7 +437,11 @@ pub trait IteratorILP: Iterator + Sized + TrustedLowerBound {
         let stream_len = self.size_hint().0 / STREAMS;
         for _ in 0..stream_len {
             for acc in &mut accumulators {
-                accumulate(acc, unsafe { next_unchecked(&mut self) });
+                // SAFETY: The TrustedLowerBound contract lets us assume than
+                //         the lower bound returned by size_hint is correct, and
+                //         the above loop will not iterate for more than this
+                //         amount of iteration, so this is trusted to be safe.
+                accumulate(acc, unsafe { self.next().unwrap_unchecked() });
             }
         }
 
@@ -530,20 +537,6 @@ pub trait IteratorILP: Iterator + Sized + TrustedLowerBound {
 
 impl<I: Iterator + Sized + TrustedLowerBound> IteratorILP for I {}
 
-/// Unchecked variant of `Iterator::next()`
-///
-/// # Safety
-///
-/// Iterator must contain one more item (you can assert this with TrustedLen)
-#[inline]
-unsafe fn next_unchecked<Item>(iter: &mut impl Iterator<Item = Item>) -> Item {
-    if let Some(item) = iter.next() {
-        item
-    } else {
-        unreachable_unchecked()
-    }
-}
-
 /// An iterator that reports an accurate lower bound using [`size_hint()`]
 ///
 /// # Safety
@@ -564,7 +557,8 @@ unsafe fn next_unchecked<Item>(iter: &mut impl Iterator<Item = Item>) -> Item {
 /// [`TrustedLen`]: core::iter::TrustedLen
 pub unsafe trait TrustedLowerBound: Iterator {}
 //
-// All standard Iterator implementations are presumed to be implemented correctly
+// SAFETY: All Iterator impls from std are trusted to be implemented correctly,
+//         since if you can't trust std, there is no hope for you...
 mod core_iters {
     use crate::TrustedLowerBound;
     use core::{

@@ -219,6 +219,7 @@ impl Drop for SideEffects<'_> {
     }
 }
 //
+// SAFETY: size_hint just forwards to slice::Iter::len(), which is trusted
 unsafe impl TrustedLowerBound for SideEffects<'_> {}
 
 // Criterion boilerplate
