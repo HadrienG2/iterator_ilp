@@ -427,7 +427,7 @@ pub trait IteratorILP: Iterator + Sized + TrustedLowerBound {
 
         // Set up accumulators
         let mut accumulators: [Option<Acc>; STREAMS] = core::array::from_fn(|_| Some(neutral()));
-        let mut accumulate = |accumulator: &mut Option<Acc>, item| {
+        let mut accumulate_opt = |accumulator: &mut Option<Acc>, item| {
             if let Some(prev_acc) = accumulator.take() {
                 *accumulator = Some(accumulate(prev_acc, item));
             }
@@ -441,13 +441,8 @@ pub trait IteratorILP: Iterator + Sized + TrustedLowerBound {
                 //         the lower bound returned by size_hint is correct, and
                 //         the above loop will not iterate for more than this
                 //         amount of iteration, so this is trusted to be safe.
-                accumulate(acc, unsafe { self.next().unwrap_unchecked() });
+                accumulate_opt(acc, unsafe { self.next().unwrap_unchecked() });
             }
-        }
-
-        // Accumulate irregular elements at the end
-        for (idx, item) in self.enumerate() {
-            accumulate(&mut accumulators[idx % STREAMS], item);
         }
 
         // Merge the accumulators
@@ -461,7 +456,11 @@ pub trait IteratorILP: Iterator + Sized + TrustedLowerBound {
                 ));
             }
         }
-        accumulators[0].take().unwrap()
+        let ilp_result = accumulators[0].take().unwrap();
+
+        // Accumulate remaining irregular elements using standard iterator fold,
+        // then merge (doing it like this improves floating-point accuracy)
+        merge(ilp_result, self.fold(neutral(), accumulate))
     }
 
     /// Like [`Iterator::reduce()`], but with multiple ILP streams
