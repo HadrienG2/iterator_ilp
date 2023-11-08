@@ -511,7 +511,7 @@ pub trait IteratorILP: Iterator + Sized + TrustedLowerBound {
     ///
     /// - If `STREAMS` is set to 0. Need at least one instruction stream to
     ///   make progress.
-    #[inline]
+    #[inline(always)]
     fn sum_ilp<const STREAMS: usize, S: Add<Self::Item, Output = S> + Add<S> + Zero>(self) -> S {
         assert_ne!(STREAMS, 0, "Need at least one stream to make progress");
         self.fold_ilp::<STREAMS, _>(|| S::zero(), |acc, it| acc + it, |acc1, acc2| acc1 + acc2)
