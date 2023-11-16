@@ -5,27 +5,33 @@
 # - Two times a month, a scheduled job makes sure that the code remains
 #   compatible and lint-free on upcoming Rust toolchains (beta and nightly).
 
+name: Continuous Integration
+
 on:
   push:
   pull_request:
   schedule:
-    - cron: '0 0 2,16 * *'
+    - cron: '0 0 7/15 * *'
 
-name: Continuous Integration
+# Cancel existing jobs on new pushes to the same branch
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
 
 env:
   RUSTFLAGS: -D warnings
   RUSTDOCFLAGS: -D warnings
-  MSRV: 1.70.0
+  MINIMAL_RUST: 1.70.0  # Minimal Supported Rust Version
 
 jobs:
-  # Auto-format, clippy and rustc lints do not depend on the operating system
-  # and only need to be tested on the latest supported release of each CI run.
+  # Format doesn't depend on configuration. Lints do, but there's no OS-specific
+  # code path in this crate and the std feature is a strict superset of what the
+  # crate does when the feature is not enabled.
+  #
   # We don't care about warnings on the minimum supported Rust version, only
   # about building and running correctly.
-  lints:
-    # Only run on "pull_request" event for external PRs. This is to avoid
-    # duplicate builds for PRs created from internal branches.
+  format-lints:
+    # Don't run CI twice when a PR is created from a branch internal to the repo
     if: github.event_name == 'push' || github.event_name == 'schedule' || github.event.pull_request.head.repo.full_name != github.repository
 
     runs-on: ubuntu-latest
@@ -37,7 +43,7 @@ jobs:
           - 'std'
 
     env:
-      FEATURE_FLAGS: '--no-default-features --features=${{ matrix.features }}'
+      FEATURE_FLAGS: '--workspace --no-default-features --features=${{ matrix.features }}'
 
     steps:
       - name: Checkout sources
@@ -62,16 +68,13 @@ jobs:
           components: rustfmt,clippy
 
       - name: Check code formatting
-        run: cargo fmt -- --check
+        run: cargo fmt --all --check
 
       - name: Render the docs
         run: cargo doc ${{ env.FEATURE_FLAGS }}
 
-      - name: Type-check the program
-        run: cargo check --all-targets ${{ env.FEATURE_FLAGS }}
-
       - name: Check clippy lints
-        run: cargo clippy ${{ env.FEATURE_FLAGS }} -- -D warnings
+        run: cargo clippy ${{ env.FEATURE_FLAGS }} --all-targets -- -D warnings
 
       - name: Check semver compliance
         uses: obi1kenobi/cargo-semver-checks-action@v2
@@ -83,8 +86,8 @@ jobs:
 
   # Run the tests on all supported OSes and Rust versions (main CI)
   test-contrib:
-    # Only run on "pull_request" event for external PRs. This is to avoid
-    # duplicate builds for PRs created from internal branches.
+    # Don't run CI twice when a PR is created from a branch internal to the repo
+    # Don't run in scheduled jobs, that's what test-scheduled is for
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
 
     strategy:
@@ -94,7 +97,7 @@ jobs:
           - "--no-default-features"
         rust:
           - stable
-          - $MSRV  # Minimum supported Rust version
+          - $MINIMAL_RUST  # Minimum supported Rust version
 
     runs-on: ubuntu-latest
 
@@ -135,7 +138,7 @@ jobs:
         rust:
           - beta
           - nightly
-          - $MSRV  # Minimum supported Rust version (can be broken by deps)
+          - $MINIMAL_RUST  # Compatibility can be broken by deps updates
 
     runs-on: ubuntu-latest
 
