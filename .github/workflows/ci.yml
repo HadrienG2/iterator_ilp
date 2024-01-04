@@ -52,7 +52,7 @@ jobs:
       - uses: awalsh128/cache-apt-pkgs-action@latest
         with:
           version: 1.0
-          packages: libhwloc-dev
+          packages: libhwloc-dev libudev-dev
 
       - name: Set up stable toolchain
         if: github.event_name != 'schedule'
