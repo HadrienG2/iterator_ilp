@@ -21,7 +21,7 @@ concurrency:
 env:
   RUSTFLAGS: -D warnings
   RUSTDOCFLAGS: -D warnings
-  MINIMAL_RUST: 1.70.0  # Minimal Supported Rust Version
+  MINIMAL_RUST: 1.71.0  # Minimal Supported Rust Version
 
 jobs:
   # Format doesn't depend on configuration. Lints do, but there's no OS-specific
@@ -52,7 +52,7 @@ jobs:
       - uses: awalsh128/cache-apt-pkgs-action@latest
         with:
           version: 1.0
-          packages: libhwloc-dev
+          packages: libhwloc-dev libudev-dev
 
       - name: Set up stable toolchain
         if: github.event_name != 'schedule'
@@ -108,7 +108,7 @@ jobs:
       - uses: awalsh128/cache-apt-pkgs-action@latest
         with:
           version: 1.0
-          packages: libhwloc-dev
+          packages: libhwloc-dev libudev-dev
 
       - name: Set up toolchain
         uses: actions-rust-lang/setup-rust-toolchain@v1
@@ -149,7 +149,7 @@ jobs:
       - uses: awalsh128/cache-apt-pkgs-action@latest
         with:
           version: 1.0
-          packages: libhwloc-dev
+          packages: libhwloc-dev libudev-dev
 
       - name: Set up toolchain
         uses: actions-rust-lang/setup-rust-toolchain@v1
