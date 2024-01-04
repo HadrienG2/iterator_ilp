@@ -30,7 +30,7 @@ num-traits = "0.2"
 
 [dev-dependencies]
 criterion = { version = "0.5", default-features = false }
-hwlocality = { git = "https://github.com/HadrienG2/hwlocality.git", rev = "2d24c4b7cbd38c7330878adf16e5ee335e75a8d6" }
+hwlocality = "1.0.0-alpha.1"
 multiversion = "0.7"
 proptest = "1.3"
 rand = "0.8"
