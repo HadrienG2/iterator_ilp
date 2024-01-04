@@ -21,7 +21,7 @@ concurrency:
 env:
   RUSTFLAGS: -D warnings
   RUSTDOCFLAGS: -D warnings
-  MINIMAL_RUST: 1.70.0  # Minimal Supported Rust Version
+  MINIMAL_RUST: 1.71.0  # Minimal Supported Rust Version
 
 jobs:
   # Format doesn't depend on configuration. Lints do, but there's no OS-specific
