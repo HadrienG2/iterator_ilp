@@ -13,6 +13,7 @@ fn criterion_benchmark(c: &mut Criterion) {
     let min_l1d_bytes = Topology::new()
         .unwrap()
         .cpu_cache_stats()
+        .unwrap()
         .smallest_data_cache_sizes()[0];
     let min_l1d_floats = min_l1d_bytes as usize / std::mem::size_of::<f32>();
     let min_l1d_floats_pow2 = usize::BITS - min_l1d_floats.leading_zeros();
