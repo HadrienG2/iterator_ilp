@@ -144,7 +144,6 @@
 use core::iter::{FusedIterator, Product, Sum};
 use core::{
     cell::RefCell,
-    iter::{ExactSizeIterator, Iterator},
     ops::{Add, Mul},
 };
 use num_traits::{One, Zero};
@@ -563,8 +562,8 @@ mod core_iters {
     use core::{
         iter::{
             Chain, Cloned, Copied, Cycle, Empty, Enumerate, Filter, FilterMap, FlatMap, Flatten,
-            FromFn, Fuse, Inspect, Iterator, Map, MapWhile, Once, OnceWith, Peekable, Repeat,
-            RepeatWith, Rev, Scan, Skip, SkipWhile, StepBy, Successors, Take, TakeWhile, Zip,
+            FromFn, Fuse, Inspect, Map, MapWhile, Once, OnceWith, Peekable, Repeat, RepeatWith,
+            Rev, Scan, Skip, SkipWhile, StepBy, Successors, Take, TakeWhile, Zip,
         },
         ops::{Range, RangeFrom, RangeInclusive},
         str::{CharIndices, Chars, EncodeUtf16, SplitAsciiWhitespace, SplitWhitespace},
