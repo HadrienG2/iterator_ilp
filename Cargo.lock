@@ -178,6 +178,26 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "11157ac094ffbdde99aa67b23417ebdd801842852b500e395a45a9c0aac03e4a"
 
 [[package]]
+name = "enum-iterator"
+version = "1.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9fd242f399be1da0a5354aa462d57b4ab2b4ee0683cc552f7c007d2d12d36e94"
+dependencies = [
+ "enum-iterator-derive",
+]
+
+[[package]]
+name = "enum-iterator-derive"
+version = "1.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "03cdc46ec28bd728e67540c528013c6a10eb69a02eb31078a1bda695438cbfb8"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.50",
+]
+
+[[package]]
 name = "errno"
 version = "0.3.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -228,25 +248,27 @@ checksum = "bd5256b483761cd23699d0da46cc6fd2ee3be420bbe6d020ae4a091e70b7e9fd"
 
 [[package]]
 name = "hwlocality"
-version = "1.0.0-alpha.1"
+version = "1.0.0-alpha.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6020affad7f95b46f12607a8714aa70bd02c8df3b3abf9ef5c8cd2f7ae57a033"
+checksum = "07d49e928d0dfa8603bf9ee1161248a91854eda4a31ab4db9313e0b56ac7f3c6"
 dependencies = [
  "arrayvec",
  "bitflags",
  "derive_more",
+ "enum-iterator",
  "errno",
  "hwlocality-sys",
  "libc",
  "num_enum",
  "thiserror",
+ "windows-sys",
 ]
 
 [[package]]
 name = "hwlocality-sys"
-version = "0.3.5"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "88ecc1a90eeca65f95f08a7d32132cd4d35c9ee95ed89e32d0342a4bf7b5d644"
+checksum = "a9fc9c05ba2679c5f7d518bc2446dc6d892707ffff99534422082591ccbc825d"
 dependencies = [
  "libc",
  "pkg-config",
