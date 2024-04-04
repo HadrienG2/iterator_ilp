@@ -205,9 +205,9 @@ use num_traits::{One, Zero};
 ///   `iterator_ilp` without unsafe assertions about types outside of their
 ///   control. In an ideal world, all numerical container libraries would
 ///   eventually provide such implementations.
-/// - Use the [`AssertLowerBoundOk`] unsafe wrapper to unsafely assert, on your
-///   side, that **you** trust an iterator to have a `size_hint()`
-///   implementation that provides a correct lower bound.
+/// - Use the [`AssertLowerBoundOk`] wrapper to unsafely assert, on your side,
+///   that **you** trust an iterator to have a `size_hint()` implementation that
+///   provides a correct lower bound.
 ///
 /// That's it for the general strategy, now to get into the detail of particular
 /// algorithms, we must divide [`Iterator`] reductions into three categories:
