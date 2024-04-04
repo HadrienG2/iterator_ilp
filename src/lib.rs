@@ -141,9 +141,10 @@
 #![cfg_attr(not(any(test, feature = "std")), no_std)]
 
 #[cfg(doc)]
-use core::iter::{FusedIterator, Product, Sum};
+use core::iter::{Product, Sum};
 use core::{
     cell::RefCell,
+    iter::FusedIterator,
     ops::{Add, Mul},
 };
 use num_traits::{One, Zero};
@@ -194,10 +195,19 @@ use num_traits::{One, Zero};
 /// correct for safety. This is a subset of the contract of [`TrustedLen`],
 /// which, unfortunately, is unstable.
 ///
-/// Therefore, we currently approximate it by providing our own version of
-/// [`TrustedLen`] trait which is implemented for all standard library iterators
-/// that implement [`TrustedLen`]. Once [`TrustedLen`] is stabilized, this crate
-/// will blanket-impl [`TrustedLowerBound`] for it in a breaking release.
+/// Therefore, we provide our own [`TrustedLowerBound`] unsafe trait, which we
+/// implement for all standard library iterators. If you need to use
+/// `iterator_ilp` with another iterator whose lower size bound you trust, you
+/// can do either of the following:
+///
+/// - Implement [`TrustedLowerBound`] for this iterator, if it's a type that you
+///   control. This is the preferred path, because it allows users to leverage
+///   `iterator_ilp` without unsafe assertions about types outside of their
+///   control. In an ideal world, all numerical container libraries would
+///   eventually provide such implementations.
+/// - Use the [`AssertLowerBoundOk`] wrapper to unsafely assert, on your side,
+///   that **you** trust an iterator to have a `size_hint()` implementation that
+///   provides a correct lower bound.
 ///
 /// That's it for the general strategy, now to get into the detail of particular
 /// algorithms, we must divide [`Iterator`] reductions into three categories:
@@ -881,12 +891,117 @@ mod core_iters {
     }
 }
 
+/// Manual implementation of [`TrustedLowerBound`] for an iterator
+#[derive(Copy, Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct AssertLowerBoundOk<I: Iterator>(I);
+//
+impl<I: Iterator> AssertLowerBoundOk<I> {
+    /// Assert that the lower size bound provided by an iterator's `size_hint()`
+    /// method is correct.
+    ///
+    /// # Safety
+    ///
+    /// The lower size bound must indeed be correct.
+    #[inline]
+    pub unsafe fn new(inner: I) -> Self {
+        Self(inner)
+    }
+}
+//
+impl<I: DoubleEndedIterator> DoubleEndedIterator for AssertLowerBoundOk<I> {
+    #[inline]
+    fn next_back(&mut self) -> Option<Self::Item> {
+        self.0.next_back()
+    }
+
+    #[inline]
+    fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
+        self.0.nth_back(n)
+    }
+}
+//
+impl<I: ExactSizeIterator> ExactSizeIterator for AssertLowerBoundOk<I> {
+    #[inline]
+    fn len(&self) -> usize {
+        self.0.len()
+    }
+}
+//
+impl<I: FusedIterator> FusedIterator for AssertLowerBoundOk<I> {}
+//
+impl<I: Iterator> Iterator for AssertLowerBoundOk<I> {
+    type Item = I::Item;
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.next()
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.0.size_hint()
+    }
+
+    #[inline]
+    fn count(self) -> usize
+    where
+        I: Sized,
+    {
+        self.0.count()
+    }
+
+    #[inline]
+    fn last(self) -> Option<Self::Item>
+    where
+        I: Sized,
+    {
+        self.0.last()
+    }
+
+    #[inline]
+    fn nth(&mut self, n: usize) -> Option<Self::Item> {
+        self.0.nth(n)
+    }
+}
+//
+// # Safety
+//
+// Safety assertion is offloaded to the `new()` constructor
+unsafe impl<I: Iterator> TrustedLowerBound for AssertLowerBoundOk<I> {}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use proptest::prelude::*;
+    use static_assertions::assert_impl_all;
+
+    assert_impl_all!(
+        std::slice::Iter<'static, u32>: FusedIterator, TrustedLowerBound
+    );
 
     proptest! {
+        #[test]
+        fn assert_lower_bound_basic(data: Vec<u8>) {
+            let raw = data.iter();
+            // SAFETY: The size_hint of Vec's iterator is trusted
+            let iter = unsafe { AssertLowerBoundOk::new(raw.clone()) };
+            assert_eq!(iter.size_hint(), raw.size_hint());
+            assert_eq!(iter.len(), raw.len());
+            assert_eq!(iter.clone().count(), raw.clone().count());
+            assert_eq!(iter.clone().next(), raw.clone().next());
+            assert_eq!(iter.clone().next_back(), raw.clone().next_back());
+            assert_eq!(iter.clone().last(), raw.clone().last());
+        }
+
+        #[test]
+        fn assert_lower_bound_strided(data: Vec<u8>, stride: usize) {
+            let raw = data.iter();
+            // SAFETY: The size_hint of Vec's iterator is trusted
+            let iter = unsafe { AssertLowerBoundOk::new(raw.clone()) };
+            assert_eq!(iter.clone().nth(stride), raw.clone().nth(stride));
+            assert_eq!(iter.clone().nth_back(stride), raw.clone().nth_back(stride));
+        }
+
         #[test]
         fn any(dataset: Vec<u8>, needle: u8) {
             let predicate = |&item| item == needle;
