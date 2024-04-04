@@ -455,9 +455,13 @@ pub trait IteratorILP: Iterator + Sized + TrustedLowerBound {
         }
 
         // Merge the accumulators
-        let mut stride = STREAMS;
+        let mut stride = if STREAMS.is_power_of_two() {
+            STREAMS
+        } else {
+            STREAMS.next_power_of_two()
+        };
         while stride > 1 {
-            stride = stride / 2 + (stride % 2 != 0) as usize;
+            stride /= 2;
             for i in 0..stride.min(STREAMS - stride) {
                 accumulators[i] = Some(merge(
                     accumulators[i].take().unwrap(),
@@ -1009,6 +1013,9 @@ mod tests {
             prop_assert_eq!(dataset.iter().any_ilp::<1>(predicate), expected);
             prop_assert_eq!(dataset.iter().any_ilp::<2>(predicate), expected);
             prop_assert_eq!(dataset.iter().any_ilp::<3>(predicate), expected);
+            prop_assert_eq!(dataset.iter().any_ilp::<4>(predicate), expected);
+            prop_assert_eq!(dataset.iter().any_ilp::<5>(predicate), expected);
+            prop_assert_eq!(dataset.iter().any_ilp::<6>(predicate), expected);
         }
 
         #[test]
@@ -1018,6 +1025,9 @@ mod tests {
             prop_assert_eq!(dataset.iter().all_ilp::<1>(predicate), expected);
             prop_assert_eq!(dataset.iter().all_ilp::<2>(predicate), expected);
             prop_assert_eq!(dataset.iter().all_ilp::<3>(predicate), expected);
+            prop_assert_eq!(dataset.iter().all_ilp::<4>(predicate), expected);
+            prop_assert_eq!(dataset.iter().all_ilp::<5>(predicate), expected);
+            prop_assert_eq!(dataset.iter().all_ilp::<6>(predicate), expected);
         }
 
         #[test]
@@ -1027,6 +1037,9 @@ mod tests {
             prop_assert_eq!(dataset.iter().find_ilp::<1>(predicate), expected);
             prop_assert_eq!(dataset.iter().find_ilp::<2>(predicate), expected);
             prop_assert_eq!(dataset.iter().find_ilp::<3>(predicate), expected);
+            prop_assert_eq!(dataset.iter().find_ilp::<4>(predicate), expected);
+            prop_assert_eq!(dataset.iter().find_ilp::<5>(predicate), expected);
+            prop_assert_eq!(dataset.iter().find_ilp::<6>(predicate), expected);
         }
 
         #[test]
@@ -1036,6 +1049,9 @@ mod tests {
             prop_assert_eq!(dataset.iter().find_map_ilp::<1, _>(find_map), expected);
             prop_assert_eq!(dataset.iter().find_map_ilp::<2, _>(find_map), expected);
             prop_assert_eq!(dataset.iter().find_map_ilp::<3, _>(find_map), expected);
+            prop_assert_eq!(dataset.iter().find_map_ilp::<4, _>(find_map), expected);
+            prop_assert_eq!(dataset.iter().find_map_ilp::<5, _>(find_map), expected);
+            prop_assert_eq!(dataset.iter().find_map_ilp::<6, _>(find_map), expected);
         }
 
         #[test]
@@ -1045,6 +1061,9 @@ mod tests {
             prop_assert_eq!(dataset.iter().position_ilp::<1>(predicate), expected);
             prop_assert_eq!(dataset.iter().position_ilp::<2>(predicate), expected);
             prop_assert_eq!(dataset.iter().position_ilp::<3>(predicate), expected);
+            prop_assert_eq!(dataset.iter().position_ilp::<4>(predicate), expected);
+            prop_assert_eq!(dataset.iter().position_ilp::<5>(predicate), expected);
+            prop_assert_eq!(dataset.iter().position_ilp::<6>(predicate), expected);
         }
 
         #[test]
@@ -1054,6 +1073,9 @@ mod tests {
             prop_assert_eq!(dataset.iter().rposition_ilp::<1>(predicate), expected);
             prop_assert_eq!(dataset.iter().rposition_ilp::<2>(predicate), expected);
             prop_assert_eq!(dataset.iter().rposition_ilp::<3>(predicate), expected);
+            prop_assert_eq!(dataset.iter().rposition_ilp::<4>(predicate), expected);
+            prop_assert_eq!(dataset.iter().rposition_ilp::<5>(predicate), expected);
+            prop_assert_eq!(dataset.iter().rposition_ilp::<6>(predicate), expected);
         }
 
         #[test]
@@ -1074,6 +1096,18 @@ mod tests {
                 dataset.iter().fold_ilp::<3, _>(zero, accumulate, merge),
                 expected
             );
+            prop_assert_eq!(
+                dataset.iter().fold_ilp::<4, _>(zero, accumulate, merge),
+                expected
+            );
+            prop_assert_eq!(
+                dataset.iter().fold_ilp::<5, _>(zero, accumulate, merge),
+                expected
+            );
+            prop_assert_eq!(
+                dataset.iter().fold_ilp::<6, _>(zero, accumulate, merge),
+                expected
+            );
         }
 
         #[test]
@@ -1083,6 +1117,9 @@ mod tests {
             prop_assert_eq!(dataset.iter().copied().reduce_ilp::<1>(reduce), expected);
             prop_assert_eq!(dataset.iter().copied().reduce_ilp::<2>(reduce), expected);
             prop_assert_eq!(dataset.iter().copied().reduce_ilp::<3>(reduce), expected);
+            prop_assert_eq!(dataset.iter().copied().reduce_ilp::<4>(reduce), expected);
+            prop_assert_eq!(dataset.iter().copied().reduce_ilp::<5>(reduce), expected);
+            prop_assert_eq!(dataset.iter().copied().reduce_ilp::<6>(reduce), expected);
         }
 
         #[test]
@@ -1092,6 +1129,9 @@ mod tests {
             prop_assert_eq!(dataset.iter().copied().sum_ilp::<1, u64>(), expected);
             prop_assert_eq!(dataset.iter().copied().sum_ilp::<2, u64>(), expected);
             prop_assert_eq!(dataset.iter().copied().sum_ilp::<3, u64>(), expected);
+            prop_assert_eq!(dataset.iter().copied().sum_ilp::<4, u64>(), expected);
+            prop_assert_eq!(dataset.iter().copied().sum_ilp::<5, u64>(), expected);
+            prop_assert_eq!(dataset.iter().copied().sum_ilp::<6, u64>(), expected);
         }
 
         #[test]
@@ -1105,6 +1145,9 @@ mod tests {
             assert_close(dataset.iter().copied().product_ilp::<1, f64>())?;
             assert_close(dataset.iter().copied().product_ilp::<2, f64>())?;
             assert_close(dataset.iter().copied().product_ilp::<3, f64>())?;
+            assert_close(dataset.iter().copied().product_ilp::<4, f64>())?;
+            assert_close(dataset.iter().copied().product_ilp::<5, f64>())?;
+            assert_close(dataset.iter().copied().product_ilp::<6, f64>())?;
         }
     }
 }
