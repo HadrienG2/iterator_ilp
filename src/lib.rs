@@ -249,6 +249,12 @@ use num_traits::{One, Zero};
 /// reduction callable will observe a different sequence of inputs, so it should
 /// not rely on ordering of inputs for correctness.
 ///
+/// Although many numerical types implement `Add<&T>` in addition to `Add<T>`
+/// for user convenience, due to compiler limitations, better performance will
+/// often be achieved when iterating over numerical types by value, rather than
+/// by reference. If you have an iterator of references, you can usually achieve
+/// this by calling [`Iterator::copied()`].
+///
 /// # Sum and product
 ///
 /// The definition of the [`Sum`] and [`Product`] traits is very high-level and

@@ -288,7 +288,7 @@ dependencies = [
 
 [[package]]
 name = "iterator_ilp"
-version = "2.1.1"
+version = "2.1.2"
 dependencies = [
  "criterion",
  "hwlocality",
