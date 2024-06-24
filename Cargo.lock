@@ -248,9 +248,9 @@ checksum = "bd5256b483761cd23699d0da46cc6fd2ee3be420bbe6d020ae4a091e70b7e9fd"
 
 [[package]]
 name = "hwlocality"
-version = "1.0.0-alpha.4"
+version = "1.0.0-alpha.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b4b559a30e4a7e336f389a79e58a9933c1aa07f91d09c55bb6ffcce046a709e0"
+checksum = "29e2cf498912fab0cb98cae17170e146235dc01b0b6150594d295578f103932e"
 dependencies = [
  "arrayvec",
  "bitflags",
