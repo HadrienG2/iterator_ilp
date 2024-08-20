@@ -86,7 +86,42 @@ jobs:
       - name: Check clippy lints
         run: cargo clippy ${{ env.FEATURE_FLAGS }} --all-targets -- -D warnings
 
-      - name: Check semver compliance
+      - name: Check semver compliance (push/PR version)
+        # Not guaranteed to run on nightly, so we use the separate job below
+        if: github.event_name != 'schedule'
+        uses: obi1kenobi/cargo-semver-checks-action@v2
+        with:
+          feature-group: only-explicit-features
+          features: ${{ matrix.features }}
+          rust-toolchain: manual
+
+  # Workaround for cargo-semver-checks not guaranteeing nightly support
+  scheduled-semver-checks:
+    if: github.event_name == 'schedule'
+
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        features:
+          - '""'
+          - 'std'
+
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+
+      - uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          version: 1.0
+          packages: libhwloc-dev libudev-dev
+
+      - name: Set up stable toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          components: rustfmt,clippy
+
+      - name: Check semver compliance (scheduled version)
         uses: obi1kenobi/cargo-semver-checks-action@v2
         with:
           feature-group: only-explicit-features
