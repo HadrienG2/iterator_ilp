@@ -11,10 +11,10 @@ name = "iterator_ilp"
 # - Roll an annotated git tag
 # - Add a github release
 #
-version = "2.1.2"
+version = "3.0.0"
 authors = ["Hadrien G. <knights_of_ni@gmx.com>"]
 edition = "2021"
-rust-version = "1.71.0"
+rust-version = "1.75.0"
 description = "Iterator extensions for instruction-parallel reductions"
 repository = "https://github.com/HadrienG2/iterator_ilp"
 license = "MPL-2.0"
@@ -30,7 +30,7 @@ num-traits = "0.2"
 
 [dev-dependencies]
 criterion = { version = "0.5", default-features = false }
-hwlocality = "1.0.0-alpha.5"
+hwlocality = "1.0.0-alpha.6"
 multiversion = "0.7"
 proptest = "1.5"
 rand = "0.8"
