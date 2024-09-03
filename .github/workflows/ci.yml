@@ -19,6 +19,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
+  CARGO_INCREMENTAL: 0
   RUSTFLAGS: -D warnings
   RUSTDOCFLAGS: -D warnings
   MINIMAL_RUST: 1.75.0  # Minimal Supported Rust Version
@@ -85,6 +86,14 @@ jobs:
 
       - name: Check clippy lints
         run: cargo clippy ${{ env.FEATURE_FLAGS }} --all-targets -- -D warnings
+
+      - name: Set up cargo-binstall
+        run: curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
+
+      - name: Look for unused dependencies with cargo-machete
+        run: |
+          cargo binstall -y cargo-machete
+          cargo machete
 
       - name: Check semver compliance (push/PR version)
         # Not guaranteed to run on nightly, so we use the separate job below
