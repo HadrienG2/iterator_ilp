@@ -589,7 +589,7 @@ mod core_iters {
         str::{CharIndices, Chars, EncodeUtf16, SplitAsciiWhitespace, SplitWhitespace},
     };
 
-    unsafe impl<'a, I> TrustedLowerBound for &'a mut I where I: TrustedLowerBound + ?Sized {}
+    unsafe impl<I> TrustedLowerBound for &mut I where I: TrustedLowerBound + ?Sized {}
     unsafe impl<A, B> TrustedLowerBound for Chain<A, B>
     where
         A: TrustedLowerBound,
@@ -738,52 +738,39 @@ mod core_iters {
     unsafe impl TrustedLowerBound for core::char::EscapeUnicode {}
     unsafe impl TrustedLowerBound for core::char::ToLowercase {}
     unsafe impl TrustedLowerBound for core::char::ToUppercase {}
-    unsafe impl<'a, A> TrustedLowerBound for core::option::Iter<'a, A> {}
-    unsafe impl<'a, A> TrustedLowerBound for core::option::IterMut<'a, A> {}
+    unsafe impl<A> TrustedLowerBound for core::option::Iter<'_, A> {}
+    unsafe impl<A> TrustedLowerBound for core::option::IterMut<'_, A> {}
     unsafe impl<A> TrustedLowerBound for core::option::IntoIter<A> {}
-    unsafe impl<'a, A> TrustedLowerBound for core::result::Iter<'a, A> {}
-    unsafe impl<'a, A> TrustedLowerBound for core::result::IterMut<'a, A> {}
+    unsafe impl<A> TrustedLowerBound for core::result::Iter<'_, A> {}
+    unsafe impl<A> TrustedLowerBound for core::result::IterMut<'_, A> {}
     unsafe impl<A> TrustedLowerBound for core::result::IntoIter<A> {}
     unsafe impl<T> TrustedLowerBound for core::slice::Chunks<'_, T> {}
     unsafe impl<T> TrustedLowerBound for core::slice::ChunksExact<'_, T> {}
     unsafe impl<T> TrustedLowerBound for core::slice::ChunksExactMut<'_, T> {}
     unsafe impl<T> TrustedLowerBound for core::slice::ChunksMut<'_, T> {}
     unsafe impl TrustedLowerBound for core::slice::EscapeAscii<'_> {}
-    unsafe impl<'a, T> TrustedLowerBound for core::slice::Iter<'a, T> {}
-    unsafe impl<'a, T> TrustedLowerBound for core::slice::IterMut<'a, T> {}
+    unsafe impl<T> TrustedLowerBound for core::slice::Iter<'_, T> {}
+    unsafe impl<T> TrustedLowerBound for core::slice::IterMut<'_, T> {}
     unsafe impl<T> TrustedLowerBound for core::slice::RChunks<'_, T> {}
     unsafe impl<T> TrustedLowerBound for core::slice::RChunksExact<'_, T> {}
     unsafe impl<T> TrustedLowerBound for core::slice::RChunksExactMut<'_, T> {}
     unsafe impl<T> TrustedLowerBound for core::slice::RChunksMut<'_, T> {}
-    unsafe impl<'a, T, P> TrustedLowerBound for core::slice::RSplit<'a, T, P> where P: FnMut(&T) -> bool {}
-    unsafe impl<'a, T, P> TrustedLowerBound for core::slice::RSplitMut<'a, T, P> where
+    unsafe impl<T, P> TrustedLowerBound for core::slice::RSplit<'_, T, P> where P: FnMut(&T) -> bool {}
+    unsafe impl<T, P> TrustedLowerBound for core::slice::RSplitMut<'_, T, P> where P: FnMut(&T) -> bool {}
+    unsafe impl<T, P> TrustedLowerBound for core::slice::RSplitN<'_, T, P> where P: FnMut(&T) -> bool {}
+    unsafe impl<T, P> TrustedLowerBound for core::slice::RSplitNMut<'_, T, P> where P: FnMut(&T) -> bool {}
+    unsafe impl<T, P> TrustedLowerBound for core::slice::Split<'_, T, P> where P: FnMut(&T) -> bool {}
+    unsafe impl<T, P> TrustedLowerBound for core::slice::SplitInclusive<'_, T, P> where
         P: FnMut(&T) -> bool
     {
     }
-    unsafe impl<'a, T, P> TrustedLowerBound for core::slice::RSplitN<'a, T, P> where P: FnMut(&T) -> bool
-    {}
-    unsafe impl<'a, T, P> TrustedLowerBound for core::slice::RSplitNMut<'a, T, P> where
+    unsafe impl<T, P> TrustedLowerBound for core::slice::SplitInclusiveMut<'_, T, P> where
         P: FnMut(&T) -> bool
     {
     }
-    unsafe impl<'a, T, P> TrustedLowerBound for core::slice::Split<'a, T, P> where P: FnMut(&T) -> bool {}
-    unsafe impl<'a, T, P> TrustedLowerBound for core::slice::SplitInclusive<'a, T, P> where
-        P: FnMut(&T) -> bool
-    {
-    }
-    unsafe impl<'a, T, P> TrustedLowerBound for core::slice::SplitInclusiveMut<'a, T, P> where
-        P: FnMut(&T) -> bool
-    {
-    }
-    unsafe impl<'a, T, P> TrustedLowerBound for core::slice::SplitMut<'a, T, P> where
-        P: FnMut(&T) -> bool
-    {
-    }
-    unsafe impl<'a, T, P> TrustedLowerBound for core::slice::SplitN<'a, T, P> where P: FnMut(&T) -> bool {}
-    unsafe impl<'a, T, P> TrustedLowerBound for core::slice::SplitNMut<'a, T, P> where
-        P: FnMut(&T) -> bool
-    {
-    }
+    unsafe impl<T, P> TrustedLowerBound for core::slice::SplitMut<'_, T, P> where P: FnMut(&T) -> bool {}
+    unsafe impl<T, P> TrustedLowerBound for core::slice::SplitN<'_, T, P> where P: FnMut(&T) -> bool {}
+    unsafe impl<T, P> TrustedLowerBound for core::slice::SplitNMut<'_, T, P> where P: FnMut(&T) -> bool {}
     unsafe impl<T> TrustedLowerBound for core::slice::Windows<'_, T> {}
     unsafe impl TrustedLowerBound for core::str::Bytes<'_> {}
     unsafe impl TrustedLowerBound for core::str::EscapeDebug<'_> {}
@@ -845,26 +832,25 @@ mod core_iters {
         unsafe impl<K, V> TrustedLowerBound for std::collections::hash_map::Keys<'_, K, V> {}
         unsafe impl<K, V> TrustedLowerBound for std::collections::hash_map::Values<'_, K, V> {}
         unsafe impl<K, V> TrustedLowerBound for std::collections::hash_map::ValuesMut<'_, K, V> {}
-        unsafe impl<'a, T, S> TrustedLowerBound for std::collections::hash_set::Difference<'a, T, S>
+        unsafe impl<T, S> TrustedLowerBound for std::collections::hash_set::Difference<'_, T, S>
         where
             T: Eq + Hash,
             S: BuildHasher,
         {
         }
-        unsafe impl<'a, T, S> TrustedLowerBound for std::collections::hash_set::Intersection<'a, T, S>
+        unsafe impl<T, S> TrustedLowerBound for std::collections::hash_set::Intersection<'_, T, S>
         where
             T: Eq + Hash,
             S: BuildHasher,
         {
         }
-        unsafe impl<'a, T, S> TrustedLowerBound
-            for std::collections::hash_set::SymmetricDifference<'a, T, S>
+        unsafe impl<T, S> TrustedLowerBound for std::collections::hash_set::SymmetricDifference<'_, T, S>
         where
             T: Eq + Hash,
             S: BuildHasher,
         {
         }
-        unsafe impl<'a, T, S> TrustedLowerBound for std::collections::hash_set::Union<'a, T, S>
+        unsafe impl<T, S> TrustedLowerBound for std::collections::hash_set::Union<'_, T, S>
         where
             T: Eq + Hash,
             S: BuildHasher,
