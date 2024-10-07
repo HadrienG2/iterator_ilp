@@ -756,16 +756,9 @@ mod core_iters {
     unsafe impl<T> TrustedLowerBound for core::slice::RChunksExactMut<'_, T> {}
     unsafe impl<T> TrustedLowerBound for core::slice::RChunksMut<'_, T> {}
     unsafe impl<T, P> TrustedLowerBound for core::slice::RSplit<'_, T, P> where P: FnMut(&T) -> bool {}
-    unsafe impl<T, P> TrustedLowerBound for core::slice::RSplitMut<'_, T, P> where
-        P: FnMut(&T) -> bool
-    {
-    }
-    unsafe impl<T, P> TrustedLowerBound for core::slice::RSplitN<'_, T, P> where P: FnMut(&T) -> bool
-    {}
-    unsafe impl<T, P> TrustedLowerBound for core::slice::RSplitNMut<'_, T, P> where
-        P: FnMut(&T) -> bool
-    {
-    }
+    unsafe impl<T, P> TrustedLowerBound for core::slice::RSplitMut<'_, T, P> where P: FnMut(&T) -> bool {}
+    unsafe impl<T, P> TrustedLowerBound for core::slice::RSplitN<'_, T, P> where P: FnMut(&T) -> bool {}
+    unsafe impl<T, P> TrustedLowerBound for core::slice::RSplitNMut<'_, T, P> where P: FnMut(&T) -> bool {}
     unsafe impl<T, P> TrustedLowerBound for core::slice::Split<'_, T, P> where P: FnMut(&T) -> bool {}
     unsafe impl<T, P> TrustedLowerBound for core::slice::SplitInclusive<'_, T, P> where
         P: FnMut(&T) -> bool
@@ -775,15 +768,9 @@ mod core_iters {
         P: FnMut(&T) -> bool
     {
     }
-    unsafe impl<T, P> TrustedLowerBound for core::slice::SplitMut<'_, T, P> where
-        P: FnMut(&T) -> bool
-    {
-    }
+    unsafe impl<T, P> TrustedLowerBound for core::slice::SplitMut<'_, T, P> where P: FnMut(&T) -> bool {}
     unsafe impl<T, P> TrustedLowerBound for core::slice::SplitN<'_, T, P> where P: FnMut(&T) -> bool {}
-    unsafe impl<T, P> TrustedLowerBound for core::slice::SplitNMut<'_, T, P> where
-        P: FnMut(&T) -> bool
-    {
-    }
+    unsafe impl<T, P> TrustedLowerBound for core::slice::SplitNMut<'_, T, P> where P: FnMut(&T) -> bool {}
     unsafe impl<T> TrustedLowerBound for core::slice::Windows<'_, T> {}
     unsafe impl TrustedLowerBound for core::str::Bytes<'_> {}
     unsafe impl TrustedLowerBound for core::str::EscapeDebug<'_> {}
@@ -857,8 +844,7 @@ mod core_iters {
             S: BuildHasher,
         {
         }
-        unsafe impl<T, S> TrustedLowerBound
-            for std::collections::hash_set::SymmetricDifference<'_, T, S>
+        unsafe impl<T, S> TrustedLowerBound for std::collections::hash_set::SymmetricDifference<'_, T, S>
         where
             T: Eq + Hash,
             S: BuildHasher,
