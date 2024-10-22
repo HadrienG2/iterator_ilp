@@ -1133,7 +1133,10 @@ mod tests {
                 .map(|i| (i as f64 / 256.0) + 0.5)
                 .collect::<Vec<_>>();
             let expected = dataset.iter().copied().product::<f64>();
-            let assert_close = |result: f64| Ok(prop_assert!((result - expected).abs() < 1e-6 * expected.abs()));
+            let assert_close = |result: f64| {
+                prop_assert!((result - expected).abs() < 1e-6 * expected.abs());
+                Ok(())
+            };
             assert_close(dataset.iter().copied().product_ilp::<1, f64>())?;
             assert_close(dataset.iter().copied().product_ilp::<2, f64>())?;
             assert_close(dataset.iter().copied().product_ilp::<3, f64>())?;
