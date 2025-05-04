@@ -6,12 +6,12 @@ name = "iterator_ilp"
 # - Cross-check all public API documentation, update as needed
 # - Update changelog
 # - Update version number in Cargo.toml
-# - Push master, make sure it passes CI
+# - Push branch, make PR, automerge on CI success
 # - Cargo publish
 # - Roll an annotated git tag
 # - Add a github release
 #
-version = "3.0.0"
+version = "3.0.1"
 authors = ["Hadrien G. <knights_of_ni@gmx.com>"]
 edition = "2021"
 rust-version = "1.75.0"
