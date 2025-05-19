@@ -29,7 +29,7 @@ std = []
 num-traits = "0.2"
 
 [dev-dependencies]
-criterion = { version = "0.5", default-features = false }
+criterion = { version = "0.6", default-features = false }
 hwlocality = "1.0.0-alpha.7"
 multiversion = "0.8"
 proptest = { version = "1.6", default-features = false, features = ["handle-panics", "std"] }
