@@ -19,9 +19,9 @@ checksum = "4b46cbb362ab8752921c97e041f5e366ee6297bd428a31275b9fcf1e380f7299"
 
 [[package]]
 name = "anstyle"
-version = "1.0.6"
+version = "1.0.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8901269c6307e8d93993578286ac0edf7f195079ffff5ebdeea6a59ffb7e36bc"
+checksum = "862ed96ca487e809f1c8e5a8447f6ee2cf102f846893800b20cebdf541fc6bbd"
 
 [[package]]
 name = "arrayvec"
@@ -82,18 +82,18 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "4.4.18"
+version = "4.5.41"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1e578d6ec4194633722ccf9544794b71b1385c3c027efe0c55db226fc880865c"
+checksum = "be92d32e80243a54711e5d7ce823c35c41c9d929dc4ab58e1276f625841aadf9"
 dependencies = [
  "clap_builder",
 ]
 
 [[package]]
 name = "clap_builder"
-version = "4.4.18"
+version = "4.5.41"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4df4df40ec50c46000231c914968278b1eb05098cf8f1b3a518a95030e71d1c7"
+checksum = "707eab41e9622f9139419d573eca0900137718000c517d47da73045f54331c3d"
 dependencies = [
  "anstyle",
  "clap_lex",
@@ -101,29 +101,26 @@ dependencies = [
 
 [[package]]
 name = "clap_lex"
-version = "0.6.0"
+version = "0.7.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "702fc72eb24e5a1e48ce58027a675bc24edd52096d5397d4aea7c6dd9eca0bd1"
+checksum = "b94f61472cee1439c0b966b47e3aca9ae07e45d070759512cd390ea2bebc6675"
 
 [[package]]
 name = "criterion"
-version = "0.5.1"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f2b12d017a929603d80db1831cd3a24082f8137ce19c69e6447f54f5fc8d692f"
+checksum = "e1c047a62b0cc3e145fa84415a3191f628e980b194c2755aa12300a4e6cbd928"
 dependencies = [
  "anes",
  "cast",
  "ciborium",
  "clap",
  "criterion-plot",
- "is-terminal",
  "itertools",
  "num-traits",
- "once_cell",
  "oorandom",
  "regex",
  "serde",
- "serde_derive",
  "serde_json",
  "tinytemplate",
  "walkdir",
@@ -131,9 +128,9 @@ dependencies = [
 
 [[package]]
 name = "criterion-plot"
-version = "0.5.0"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6b50826342786a51a89e2da3a28f1c32b06e387201bc2d19791f622c673706b1"
+checksum = "9b1bcc0dc7dfae599d84ad0b1a55f80cde8af3725da8313b528da95ef783e338"
 dependencies = [
  "cast",
  "itertools",
@@ -211,12 +208,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2304e00983f87ffb38b55b444b5e3b60a884b5d30c0fca7d82fe33449bbe55ea"
 
 [[package]]
-name = "hermit-abi"
-version = "0.3.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bd5256b483761cd23699d0da46cc6fd2ee3be420bbe6d020ae4a091e70b7e9fd"
-
-[[package]]
 name = "hwlocality"
 version = "1.0.0-alpha.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -245,17 +236,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "is-terminal"
-version = "0.4.12"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f23ff5ef2b80d608d61efee834934d862cd92461afc0560dedf493e4c033738b"
-dependencies = [
- "hermit-abi",
- "libc",
- "windows-sys 0.52.0",
-]
-
-[[package]]
 name = "iterator_ilp"
 version = "3.0.1"
 dependencies = [
@@ -270,9 +250,9 @@ dependencies = [
 
 [[package]]
 name = "itertools"
-version = "0.10.5"
+version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b0fd2260e829bddf4cb6ea802289de2f86d6a7a690192fbe91b3f46e0f2c8473"
+checksum = "413ee7dfc52ee1a4949ceeb7dbc8a33f2d6c088194d9f922fb8318faf1f01186"
 dependencies = [
  "either",
 ]
@@ -331,12 +311,6 @@ checksum = "071dfc062690e90b734c0b2273ce72ad0ffa95f0c74596bc250dcfd960262841"
 dependencies = [
  "autocfg",
 ]
-
-[[package]]
-name = "once_cell"
-version = "1.19.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3fdb12b2476b595f9358c5161aa467c2438859caa136dec86c26fdd2efe17b92"
 
 [[package]]
 name = "oorandom"
