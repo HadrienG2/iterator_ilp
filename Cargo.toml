@@ -11,7 +11,7 @@ name = "iterator_ilp"
 # - Roll an annotated git tag
 # - Add a github release
 #
-version = "3.0.1"
+version = "2.1.3"
 authors = ["Hadrien G. <knights_of_ni@gmx.com>"]
 edition = "2021"
 rust-version = "1.75.0"
