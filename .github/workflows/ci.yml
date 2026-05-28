@@ -15,7 +15,7 @@ on:
   schedule:
     - cron: '0 0 7/15 * *'
 
-# Cancel existing jobs on new pushes to the same branch
+# Cancel previous jobs on new pushes to the same branch
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
